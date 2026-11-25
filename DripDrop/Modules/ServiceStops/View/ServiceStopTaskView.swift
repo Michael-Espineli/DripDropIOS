@@ -473,16 +473,11 @@ final class ServiceStopTaskViewModel: ObservableObject {
             name: item.name,
             description: item.description,
             type: item.type,
-            contractedRate: item.contractedRate,
             estimatedTime: item.estimatedTime,
             status: .unassigned,
             isTaskGroup: false,
             taskGroupId: "",
-            taskGroupTaskId: "",
-            payTypeId: item.payTypeId, payTypeName: item.payTypeName,
-            payrollMode: item.payrollMode, manualPayOverrideCents: item.manualPayOverrideCents,
-            manualPayOverrideNotes: item.manualPayOverrideNotes, payrollStackBehavior: item.payrollStackBehavior,
-            payQuantity: item.payQuantity
+            taskGroupTaskId: ""
         )
     }
 
@@ -500,7 +495,7 @@ final class ServiceStopTaskViewModel: ObservableObject {
             name: item.name,
             type: item.type,
             status: .scheduled,
-            contractedRate: item.contractedRate,
+            contractedRate: 0,
             estimatedTime: item.estimatedTime,
             customerApproval: false,
             actualTime: 0,
@@ -510,26 +505,22 @@ final class ServiceStopTaskViewModel: ObservableObject {
             laborContractId: serviceStop.laborContractId,
             serviceStopId: IdInfo(
                 id: serviceStop.id,
-                internalId: serviceStop.internalId,
+                internalId: serviceStop.internalId
             ),
             jobId: IdInfo(
                 id: serviceStop.jobId,
-                internalId: "",
+                internalId: ""
             ),
             recurringServiceStopId: IdInfo(
                 id: serviceStop.recurringServiceStopId,
-                internalId: "",
+                internalId: ""
             ),
             jobTaskId: "",
             recurringServiceStopTaskId: recurringServiceStopTaskId,
             equipmentId: "",
             serviceLocationId: serviceStop.serviceLocationId,
             bodyOfWaterId: "",
-            shoppingListItemId: "",
-            payTypeId: item.payTypeId, payTypeName: item.payTypeName,
-            payrollMode: item.payrollMode, manualPayOverrideCents: item.manualPayOverrideCents,
-            manualPayOverrideNotes: item.manualPayOverrideNotes, payrollStackBehavior: item.payrollStackBehavior,
-            payQuantity: item.payQuantity
+            shoppingListItemId: ""
         )
     }
 
@@ -543,7 +534,7 @@ final class ServiceStopTaskViewModel: ObservableObject {
             name: jobTask.name,
             type: jobTask.type,
             status: .scheduled,
-            contractedRate: jobTask.contractedRate,
+            contractedRate: 0,
             estimatedTime: jobTask.estimatedTime,
             customerApproval: jobTask.customerApproval,
             actualTime: jobTask.actualTime,
@@ -568,11 +559,7 @@ final class ServiceStopTaskViewModel: ObservableObject {
             equipmentId: jobTask.equipmentId,
             serviceLocationId: serviceStop.serviceLocationId,
             bodyOfWaterId: jobTask.bodyOfWaterId,
-            shoppingListItemId: jobTask.dataBaseItemId,
-            payTypeId: jobTask.payTypeId, payTypeName: jobTask.payTypeName,
-            payrollMode: jobTask.payrollMode, manualPayOverrideCents: jobTask.manualPayOverrideCents,
-            manualPayOverrideNotes: jobTask.manualPayOverrideNotes,
-            payrollStackBehavior: jobTask.payrollStackBehavior, payQuantity: jobTask.payQuantity
+            shoppingListItemId: jobTask.dataBaseItemId
         )
     }
 }
@@ -600,6 +587,7 @@ struct ServiceStopTaskView: View {
     @StateObject var VM: ServiceStopTaskViewModel
 
     @State var serviceStopId: String
+    @State private var showJobMaterials = false
     @State private var showShoppingItemSheet: Bool = false
     @State private var showPartApprovalSheet: Bool = false
     @Binding var taskList: [ServiceStopTask]
@@ -680,7 +668,6 @@ struct ServiceStopTaskView: View {
                 dataService: dataService,
                 tasks: $VM.pendingCurrentStopTasks,
                 subtitle: ServiceStopTaskAddScope.currentStop.subtitle,
-                showsRateField: false,
                 showsClearButton: false
             )
         }
@@ -706,7 +693,6 @@ struct ServiceStopTaskView: View {
                 dataService: dataService,
                 tasks: $VM.pendingNextRecurringStopTasks,
                 subtitle: VM.selectedAddTaskScope.subtitle,
-                showsRateField: false,
                 showsClearButton: false
             )
         }
@@ -744,6 +730,11 @@ struct ServiceStopTaskView: View {
                 customerId: serviceStop?.customerId,
                 serviceLocationId: serviceStop?.serviceLocationId
             )
+        }
+        .sheet(isPresented: $showJobMaterials) {
+            if let serviceStop {
+                JobStopMaterialsSheet(dataService: dataService, stop: serviceStop)
+            }
         }
         .sheet(isPresented: $showShoppingItemSheet) {
             if let serviceStop {
@@ -984,6 +975,16 @@ struct ServiceStopTaskView: View {
                         tint: Color.poolGreen
                     ) {
                         startAddTaskFlow()
+                    }
+
+                    if !serviceStop.jobId.isEmpty {
+                        taskQuickActionButton(
+                            title: "Job Materials",
+                            systemImage: "shippingbox",
+                            tint: Color.poolGreen
+                        ) {
+                            showJobMaterials = true
+                        }
                     }
 
                     taskQuickActionButton(

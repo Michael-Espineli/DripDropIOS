@@ -1148,7 +1148,7 @@ struct TechnicianPayRequestSection: View {
     @State private var requests: [TechnicianPayRequest] = []
     @State private var type = "rateChange"
     @State private var payTypeId = ""
-    @State private var basis = "serviceStopTask"
+    @State private var basis = "serviceStop"
     @State private var amount = ""
     @State private var reason = ""
     @State private var payLineItemId = ""
@@ -1172,7 +1172,7 @@ struct TechnicianPayRequestSection: View {
                 Picker("Request", selection: $type) { Text("Future Rate").tag("rateChange"); Text("Pay Correction").tag("payCorrection"); Text("Payout / missing pay").tag("payout") }.pickerStyle(.menu)
                 if type == "rateChange" {
                     Picker("Pay Item", selection: $payTypeId) { Text("General Hourly").tag(""); ForEach(workTypes) { item in Text(item.name).tag(item.id) }; ForEach(personalPayTypes, id: \.payTypeId) { item in Text(item.payTypeName).tag(item.payTypeId) } }
-                    Picker("Pay Basis", selection: $basis) { Text("Per Task").tag("serviceStopTask"); Text("Per Visit").tag("serviceStop"); Text("Hourly").tag("technicianHourly") }
+                    Picker("Pay Basis", selection: $basis) { Text("Per Visit").tag("serviceStop"); Text("Hourly").tag("technicianHourly") }
                     DatePicker("Effective Date", selection: $effectiveDate, in: Date()..., displayedComponents: .date)
                 }
                 if type == "payCorrection" {
@@ -1202,8 +1202,8 @@ struct TechnicianPayRequestSection: View {
         .task { type = initialRequestType; payLineItemId = initialPayLineItemId; reason = initialReason; if initialRequestType == "payout" || !initialPayLineItemId.isEmpty { showForm = true }; await load() }
         .onChange(of: payTypeId) { _, value in
             if value.isEmpty { basis = "technicianHourly" }
-            else if let item = workTypes.first(where: { $0.id == value }) { basis = item.defaultRateType == .hourly ? "technicianHourly" : (item.category == .route || item.category == .estimate ? "serviceStop" : "serviceStopTask") }
-            else if let item = personalPayTypes.first(where: { $0.payTypeId == value }) { basis = item.rateType == "hourly" ? "technicianHourly" : item.payBasis }
+            else if let item = workTypes.first(where: { $0.id == value }) { basis = item.defaultRateType == .hourly ? "technicianHourly" : "serviceStop" }
+            else if let item = personalPayTypes.first(where: { $0.payTypeId == value }) { basis = item.rateType == "hourly" ? "technicianHourly" : "serviceStop" }
         }
     }
     @MainActor private func load() async {
@@ -1218,7 +1218,10 @@ struct TechnicianPayRequestSection: View {
         isSaving = true; defer { isSaving = false }
         do {
             let selectedBasis = payTypeId.isEmpty ? "technicianHourly" : basis
-            let rateType = selectedBasis == "technicianHourly" ? "hourly" : workTypes.first(where: { $0.id == payTypeId })?.defaultRateType.rawValue ?? personalPayTypes.first(where: { $0.payTypeId == payTypeId && $0.rateType != "manual" })?.rateType ?? (basis == "serviceStop" ? "flatPerStop" : "flatPerTask")
+            let configuredType = workTypes.first(where: { $0.id == payTypeId })?.defaultRateType.rawValue
+                ?? personalPayTypes.first(where: { $0.payTypeId == payTypeId && $0.rateType != "manual" })?.rateType
+            let rateType = selectedBasis == "technicianHourly" ? "hourly"
+                : configuredType == nil || ["flatPerTask", "hourly", "manual"].contains(configuredType ?? "") ? "flatPerStop" : configuredType!
             _ = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianPayRequest", payload: ["companyId":companyId,"action":"create","clientRequestId":UUID().uuidString,"type":type,"payTypeId":payTypeId,"payBasis":selectedBasis,"rateType":rateType,"amountCents":requestedCents,"effectiveStartMillis":effectiveDate.timeIntervalSince1970 * 1000,"reason":reason,"payLineItemId":payLineItemId])
             message = "Request submitted."; reason = ""; amount = ""; showForm = false; await load()
         } catch { message = error.userFacingMessage }

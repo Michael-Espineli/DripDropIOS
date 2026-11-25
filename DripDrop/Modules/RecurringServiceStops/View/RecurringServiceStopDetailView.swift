@@ -147,6 +147,8 @@
                         try? await Task.sleep(nanoseconds: 1_500_000_000)
                         showSavedFeedback = false
                     }
+                } catch is CancellationError {
+                    isLoading = false
                 } catch {
                     isLoading = false
                     showSaveError = true
@@ -169,16 +171,11 @@
                             name: task.name,
                             description: task.description,
                             type: task.type,
-                            contractedRate: task.contractedRate,
                             estimatedTime: task.estimatedTime,
                             status: .unassigned,
                             isTaskGroup: false,
                             taskGroupId: "",
-                            taskGroupTaskId: "",
-                            payTypeId: task.payTypeId, payTypeName: task.payTypeName,
-                            payrollMode: task.payrollMode, manualPayOverrideCents: task.manualPayOverrideCents,
-                            manualPayOverrideNotes: task.manualPayOverrideNotes, payrollStackBehavior: task.payrollStackBehavior,
-                            payQuantity: task.payQuantity
+                            taskGroupTaskId: ""
                         )
 
                         RSSTasks.append(recurringTask)

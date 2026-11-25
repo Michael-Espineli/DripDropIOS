@@ -13,6 +13,16 @@ import SwiftUI
 import CoreLocation
 import MapKit
 
+extension ProductionDataServiceProtocol {
+    func fetchJobCatalogProducts(companyId: String) async throws -> [GenericItem] {
+        try await getAllGenericDataBaseItems(companyId: companyId)
+    }
+
+    func fetchJobCatalogSuppliers(companyId: String) async throws -> [DataBaseItem] {
+        try await getAllDataBaseItems(companyId: companyId)
+    }
+}
+
 extension ProductionDataService {
     //----------------------------------------------------
     //                    Read Functions
@@ -866,6 +876,57 @@ extension ProductionDataService {
             .getDocuments(as:ShoppingListItem.self)
     }
     
+    // Job selection also supports catalog records created by web and legacy imports.
+    func fetchJobCatalogProducts(companyId: String) async throws -> [GenericItem] {
+        let snapshot = try await GenericItemCollection(companyId: companyId).getDocuments()
+        return try snapshot.documents.map { document in
+            var fields = document.data()
+            fields["id"] = document.documentID
+            fields["commonName"] = fields["commonName"] as? String ?? fields["name"] as? String ?? ""
+            for field in ["specificName", "category", "description", "sku", "UOM"] {
+                fields[field] = fields[field] as? String ?? ""
+            }
+            for field in ["storeItems", "storeItemsIds"] {
+                fields[field] = fields[field] as? [String] ?? []
+            }
+            fields["dateUpdated"] = fields["dateUpdated"] as? Timestamp ?? Timestamp(seconds: 0, nanoseconds: 0)
+            fields["rate"] = jobCatalogAmount(fields["rate"]) ?? 0
+            for field in ["defaultCostCents", "cost", "billingRate"] {
+                fields[field] = jobCatalogAmount(fields[field])
+            }
+            fields["sellPrice"] = jobCatalogAmount(fields["sellPrice"]) ?? jobCatalogAmount(fields["billingRate"])
+                ?? jobCatalogAmount(fields["defaultSellPrice"]) ?? 0
+            return try Firestore.Decoder().decode(GenericItem.self, from: fields)
+        }
+    }
+
+    func fetchJobCatalogSuppliers(companyId: String) async throws -> [DataBaseItem] {
+        let snapshot = try await DataBaseCollection(companyId: companyId).getDocuments()
+        return try snapshot.documents.map { document in
+            var fields = document.data()
+            fields["id"] = document.documentID
+            for field in ["name", "storeName", "venderId", "description", "sku", "color", "size"] {
+                fields[field] = fields[field] as? String ?? ""
+            }
+            fields["rate"] = jobCatalogAmount(fields["rate"]) ?? jobCatalogAmount(fields["cost"]) ?? 0
+            fields["dateUpdated"] = fields["dateUpdated"] as? Timestamp ?? Timestamp(seconds: 0, nanoseconds: 0)
+            fields["billable"] = fields["billable"] as? Bool ?? true
+            fields["category"] = (fields["category"] as? String).flatMap(DataBaseItemCategory.init(rawValue:))?.rawValue ?? DataBaseItemCategory.misc.rawValue
+            fields["subCategory"] = (fields["subCategory"] as? String).flatMap(DataBaseItemSubCategory.init(rawValue:))?.rawValue ?? DataBaseItemSubCategory.misc.rawValue
+            fields["UOM"] = (fields["UOM"] as? String).flatMap(UnitOfMeasurment.init(rawValue:))?.rawValue ?? UnitOfMeasurment.na.rawValue
+            for field in ["sellPrice", "billingRate"] {
+                fields[field] = jobCatalogAmount(fields[field])
+            }
+            return try Firestore.Decoder().decode(DataBaseItem.self, from: fields)
+        }
+    }
+
+    private func jobCatalogAmount(_ value: Any?) -> Double? {
+        let amount = (value as? NSNumber)?.doubleValue ?? (value as? String).flatMap(Double.init)
+        guard let amount, Int(exactly: amount.rounded()) != nil else { return nil }
+        return amount
+    }
+
     func getAllGenericDataBaseItems(companyId:String) async throws -> [GenericItem]{
         
         return try await GenericItemCollection(companyId: companyId)

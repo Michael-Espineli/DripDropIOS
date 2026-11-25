@@ -861,6 +861,8 @@ protocol ProductionDataServiceProtocol: Equatable {
     func getAllShoppingListItemsByUserForJob(companyId: String, jobId: String,category:String) async throws -> [ShoppingListItem]
 
     func getAllGenericDataBaseItems(companyId:String) async throws -> [GenericItem]
+    func fetchJobCatalogProducts(companyId: String) async throws -> [GenericItem]
+    func fetchJobCatalogSuppliers(companyId: String) async throws -> [DataBaseItem]
     func getAllDataBaseItemsByCompany(companyId:String,storeId:String) async throws -> [GenericItem]
     func getDataBaseItem(companyId:String,genericItemId:String) async throws -> GenericItem
     func getGenericItemByIdFromWorkOrderCollection(companyId:String,workOrderItemId:String,workOrderId:String) async throws -> GenericItem

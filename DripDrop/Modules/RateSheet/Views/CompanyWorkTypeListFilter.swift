@@ -88,7 +88,7 @@ enum CompanyWorkTypeDefaultSeeds {
             category: .cleaning,
             bucketId: "job",
             iconName: "sparkles",
-            defaultRateType: .flatPerTask,
+            defaultRateType: .flatPerStop,
             defaultStackBehavior: .stackable
         ),
         CompanyWorkTypeSeed(
@@ -97,7 +97,7 @@ enum CompanyWorkTypeDefaultSeeds {
             category: .cleaning,
             bucketId: "job",
             iconName: "drop",
-            defaultRateType: .flatPerTask,
+            defaultRateType: .flatPerStop,
             defaultStackBehavior: .stackable
         ),
         CompanyWorkTypeSeed(
@@ -668,7 +668,7 @@ struct CompanyWorkTypeEditorView: View {
         _selectedBucketId = State(initialValue: startingBucket.id)
         _iconName = State(initialValue: originalWorkType?.iconName ?? startingCategory.defaultIconName)
         _isActive = State(initialValue: originalWorkType?.isActive ?? true)
-        _defaultRateType = State(initialValue: originalWorkType?.defaultRateType ?? startingCategory.suggestedDefaultRateType)
+        _defaultRateType = State(initialValue: originalWorkType?.visitOrHourlyRateType ?? startingCategory.suggestedDefaultRateType)
         _defaultStackBehavior = State(initialValue: originalWorkType?.defaultStackBehavior ?? startingCategory.suggestedStackBehavior)
         _sortOrderText = State(initialValue: "\(originalWorkType?.sortOrder ?? defaultSortOrder)")
     }
@@ -741,7 +741,7 @@ struct CompanyWorkTypeEditorView: View {
     private var payDefaultsSection: some View {
         Section {
             Picker("Default Rate Type", selection: $defaultRateType) {
-                ForEach(RateType.allCases, id: \.self) { rateType in
+                ForEach(RateType.allCases.filter { $0 != .flatPerTask }, id: \.self) { rateType in
                     Text(rateType.title).tag(rateType)
                 }
             }

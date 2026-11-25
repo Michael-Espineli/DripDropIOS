@@ -24,6 +24,7 @@ struct ShoppingListItemDraftForm: View {
     var title: String = "Item Details"
     var showCategoryPicker: Bool = false
     var showDescription: Bool = true
+    var useJobCatalog: Bool = false
 
     private let itemTypeOptions: [ShoppingListSubCategory] = [
         .product,
@@ -81,6 +82,8 @@ struct ShoppingListItemDraftForm: View {
             .onChange(of: draft.subCategory) { _ in
                 if draft.subCategory != .product {
                     draft.selectedProduct = .emptyProductCatalogItem
+                    draft.jobSupplier = nil
+                    draft.usesJobCatalogPricing = false
                 }
 
                 if draft.subCategory != .dataBase {
@@ -159,11 +162,15 @@ struct ShoppingListItemDraftForm: View {
             }
             .buttonStyle(.plain)
             .sheet(isPresented: $showProductCatalogPicker) {
-                ProductCatalogPicker(
-                    dataService: dataService,
-                    product: $draft.selectedProduct,
-                    onlyPartPurchaseAvailable: true
-                )
+                if useJobCatalog {
+                    ProductCatalogPicker(dataService: dataService, product: $draft.selectedProduct) { product, supplier in
+                        draft.usesJobCatalogPricing = true
+                        draft.jobSupplier = supplier
+                        draft.applySelectedProduct(product)
+                    }
+                } else {
+                    ProductCatalogPicker(dataService: dataService, product: $draft.selectedProduct, onlyPartPurchaseAvailable: true)
+                }
             }
             .onChange(of: draft.selectedProduct) { item in
                 draft.applySelectedProduct(item)

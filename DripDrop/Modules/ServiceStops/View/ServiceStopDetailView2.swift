@@ -6,6 +6,7 @@
 //
 // For Route
 import SwiftUI
+import FirebaseFunctions
 import UniformTypeIdentifiers
 import WebKit
 import MessageUI
@@ -521,6 +522,8 @@ struct ServiceStopDetailView2: View {
     }
 
     private func openTesterStripCamera() {
+        guard masterDataManager.isFeatureEnabled(.testerStrips) else { return }
+
         do {
             try DripDropPicker.checkPermissions()
             showTesterStripCamera = true
@@ -1179,6 +1182,124 @@ private struct ServiceStopFollowUpItem: Identifiable, Hashable {
     }
 }
 
+struct JobStopMaterialsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+    let dataService: any ProductionDataServiceProtocol
+    let stop: ServiceStop
+
+    @State private var items: [ShoppingListItem] = []
+    @State private var requestId = UUID().uuidString
+    @State private var extraName = ""
+    @State private var extraQuantity = "1"
+    @State private var extraNote = ""
+    @State private var showingExtra = false
+    @State private var isSaving = false
+    @State private var isLoading = true
+    @State private var message: String?
+
+    private var companyId: String? {
+        if stop.otherCompany, let companyId = stop.mainCompanyId { return companyId }
+        return masterDataManager.currentCompany?.id
+    }
+
+    private var quantity: Double? {
+        Decimal(string: extraQuantity.trimmingCharacters(in: .whitespacesAndNewlines), locale: .current)
+            .map { NSDecimalNumber(decimal: $0).doubleValue }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if let message { Text(message).foregroundStyle(.red) }
+                Section("Materials for this stop") {
+                    if isLoading {
+                        ProgressView()
+                    } else if items.isEmpty {
+                        Text("No job materials are assigned to this stop.")
+                    }
+                    ForEach(items) { item in
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(item.name).font(.headline)
+                            Text("\(item.status.rawValue) · Qty \(item.quantity ?? "—")").foregroundStyle(.secondary)
+                            if item.materialUsageOnly == true {
+                                Text(item.purchasedItem?.isEmpty == false ? "Extra part used · Purchase matched" : "Extra part used · Purchase match pending")
+                                    .font(.caption)
+                            } else if item.installedAt == nil && item.status != .installed &&
+                                ([.purchased, .delivered].contains(item.status) || item.datePurchased != nil || item.purchasedItem?.isEmpty == false) {
+                                Button("Mark Installed") {
+                                    Task { await save(["action": "install", "shoppingItemId": item.id]) }
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(isSaving)
+                            }
+                        }
+                    }
+                }
+                Section {
+                    if showingExtra {
+                        TextField("Part name", text: $extraName)
+                        TextField("Quantity used", text: $extraQuantity).keyboardType(.decimalPad)
+                        TextField("Note", text: $extraNote)
+                        Button("Save part used") {
+                            guard let quantity else { return }
+                            Task {
+                                await save(["action": "useExtra", "requestId": requestId, "name": extraName,
+                                            "quantity": quantity, "note": extraNote])
+                            }
+                        }
+                        .disabled(isSaving || extraName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (quantity ?? 0) <= 0)
+                        Button("Cancel", role: .cancel) { showingExtra = false }.disabled(isSaving)
+                    } else {
+                        Button("Record extra part used", systemImage: "plus") { showingExtra = true }
+                    }
+                }
+            }
+            .navigationTitle("Job Materials")
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.disabled(isSaving) } }
+            .task { await load() }
+            .refreshable { await load() }
+        }
+    }
+
+    private func load() async {
+        defer { isLoading = false }
+        guard let companyId else { message = "Select a company to view job materials."; return }
+        do {
+            let records = try await dataService.getAllShoppingListItemsByUserForJob(companyId: companyId, jobId: stop.jobId, category: ShoppingListCategory.job.rawValue)
+            items = records.filter { item in
+                let assignedStop = item.serviceStopId ?? ""
+                return item.shoppingListActive && (assignedStop.isEmpty || assignedStop == stop.id)
+            }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        } catch {
+            message = error.userFacingMessage
+        }
+    }
+
+    private func save(_ data: [String: Any]) async {
+        guard let companyId, !isSaving else { return }
+        isSaving = true
+        defer { isSaving = false }
+        message = nil
+        var payload = data
+        payload["companyId"] = companyId
+        payload["serviceStopId"] = stop.id
+        do {
+            _ = try await Functions.functions().httpsCallable("recordJobStopMaterial").call(payload)
+            if data["action"] as? String == "useExtra" {
+                showingExtra = false
+                extraName = ""
+                extraQuantity = "1"
+                extraNote = ""
+                requestId = UUID().uuidString
+            }
+            await load()
+        } catch {
+            message = error.userFacingMessage
+        }
+    }
+}
+
 private struct ServiceStopFollowUpView: View {
     @EnvironmentObject private var masterDataManager: MasterDataManager
 
@@ -1522,8 +1643,8 @@ private struct ServiceStopFollowUpView: View {
     }
 
     private func partApprovalCanBeDelivered(_ approval: CustomerPartApproval) -> Bool {
-        guard linkedShoppingListItemId(for: approval) != nil,
-              !partApprovalIsDelivered(approval) else {
+        guard (approval.jobId ?? "").isEmpty, serviceStop.jobId.isEmpty,
+              linkedShoppingListItemId(for: approval) != nil, !partApprovalIsDelivered(approval) else {
             return false
         }
 
@@ -1962,21 +2083,28 @@ private struct ServiceStopPartApprovalResponseSheet: View {
         let fallbackNote = approved ? "Approved in person" : "Denied in person"
 
         do {
-            try await dataService.recordCustomerPartApprovalTechnicianResponse(
-                approval: approval,
-                companyId: companyId,
-                approved: approved,
-                note: responseNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? fallbackNote : responseNote,
-                actorUserId: userId,
-                actorUserName: userName,
-                actorEmail: masterDataManager.user?.email ?? "",
-                serviceStop: serviceStop
-            )
+            if approved {
+                try await dataService.recordCustomerPartApprovalTechnicianResponse(
+                    approval: approval,
+                    companyId: companyId,
+                    approved: true,
+                    note: responseNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? fallbackNote : responseNote,
+                    actorUserId: userId,
+                    actorUserName: userName,
+                    actorEmail: masterDataManager.user?.email ?? "",
+                    serviceStop: serviceStop
+                )
+            } else {
+                _ = try await Functions.functions().httpsCallable("rejectPartApproval").call([
+                    "companyId": companyId, "approvalId": approval.id,
+                    "note": responseNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? fallbackNote : responseNote
+                ])
+            }
             message = approved ? "Approval recorded." : "Denial recorded."
             await onSaved()
             dismiss()
         } catch {
-            message = "Could not save response."
+            message = error.userFacingMessage
             print("[ServiceStopPartApprovalResponseSheet][saveResponse] \(error)")
         }
     }

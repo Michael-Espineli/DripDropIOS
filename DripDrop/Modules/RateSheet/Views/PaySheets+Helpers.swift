@@ -40,8 +40,8 @@ static func dripDropProductionDefault(companyId: String) -> CompanyPaySettings {
     CompanyPaySettings(
         companyId: companyId,
         payMode: .productionOnly,
-        routePaySource: .serviceStopAndCompletedTasks,
-        taskPaySource: .technicianRateThenTaskContractedRate,
+        routePaySource: .serviceStop,
+        taskPaySource: TaskPaySource.none,
         hourlyPaySource: .none,
         allowMultipleWorkTypesPerStop: false,
         defaultStackBehavior: .stackable,
@@ -61,7 +61,7 @@ static func hourlyDefault(companyId: String) -> CompanyPaySettings {
         companyId: companyId,
         payMode: .hourlyOnly,
         routePaySource: .none,
-        taskPaySource: .none,
+        taskPaySource: TaskPaySource.none,
         hourlyPaySource: .activeRouteDuration,
         allowMultipleWorkTypesPerStop: false,
         defaultStackBehavior: .stackable,
@@ -80,8 +80,8 @@ static func hybridDefault(companyId: String) -> CompanyPaySettings {
     CompanyPaySettings(
         companyId: companyId,
         payMode: .hybrid,
-        routePaySource: .serviceStopAndCompletedTasks,
-        taskPaySource: .technicianRateThenTaskContractedRate,
+        routePaySource: .serviceStop,
+        taskPaySource: TaskPaySource.none,
         hourlyPaySource: .activeRouteDuration,
         allowMultipleWorkTypesPerStop: false,
         defaultStackBehavior: .stackable,
@@ -150,7 +150,7 @@ var title: String {
 var helpText: String {
     switch self {
     case .productionOnly:
-        return "Technicians are paid based on completed stops, tasks, and pay types."
+        return "Technicians are paid for completed service stops."
     case .hourlyOnly:
         return "Technicians are paid based on time worked, usually from an active route or time log."
     case .hybrid:
@@ -162,16 +162,10 @@ var helpText: String {
 extension RoutePaySource {
 var title: String {
     switch self {
-    case .serviceStop:
+    case .serviceStop, .completedTasks, .serviceStopAndCompletedTasks:
         return "Completed stop only"
-    case .completedTasks:
-        return "Completed tasks only"
-    case .serviceStopAndCompletedTasks:
-        return "Stop plus completed tasks"
-    case .hourlyServiceStopDuration:
+    case .hourlyServiceStopDuration, .hourlyTaskActualTime:
         return "Hourly from stop duration"
-    case .hourlyTaskActualTime:
-        return "Hourly from task time"
     case .none:
         return "No automatic stop pay"
     }
@@ -179,16 +173,10 @@ var title: String {
 
 var helpText: String {
     switch self {
-    case .serviceStop:
+    case .serviceStop, .completedTasks, .serviceStopAndCompletedTasks:
         return "A completed service stop creates one pay item."
-    case .completedTasks:
-        return "The stop itself does not create pay. Only completed tasks do."
-    case .serviceStopAndCompletedTasks:
-        return "The completed stop creates pay, and completed payable tasks can add more pay."
-    case .hourlyServiceStopDuration:
+    case .hourlyServiceStopDuration, .hourlyTaskActualTime:
         return "Pay is based on the service stop duration."
-    case .hourlyTaskActualTime:
-        return "Pay is based on actual time entered on completed tasks."
     case .none:
         return "No automatic stop pay will be generated."
     }
@@ -316,7 +304,7 @@ var title: String {
     var helpText: String {
         switch self {
         case .stackable:
-            return "This pay type can pay alongside completed task pay."
+            return "This pay type can pay alongside other eligible visit rates."
         case .exclusive:
             return "Only one matching rate should win."
     case .replacesBase:
@@ -422,30 +410,10 @@ extension WorkCategory {
 
     var suggestedDefaultRateType: RateType {
         switch self {
-        case .route:
-            return .flatPerStop
-        case .maintenance:
-            return .flatPerStop
-        case .serviceCall:
-            return .flatPerStop
-        case .repair:
-            return .flatPerTask
-        case .installation:
-            return .flatPerTask
-        case .cleaning:
-            return .flatPerTask
-        case .commercial:
-            return .flatPerStop
-        case .startup:
-            return .flatPerStop
-        case .drainAndRefill:
-            return .flatPerTask
-        case .estimate:
-            return .flatPerStop
         case .extra:
             return .manual
-        case .custom:
-            return .flatPerTask
+        default:
+            return .flatPerStop
         }
     }
 
@@ -480,6 +448,10 @@ extension WorkCategory {
 }
 
 extension CompanyWorkType {
+    var visitOrHourlyRateType: RateType {
+        defaultRateType == .flatPerTask ? .flatPerStop : defaultRateType
+    }
+
     var displayIconName: String {
         if let iconName, !iconName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return iconName
@@ -499,8 +471,6 @@ extension WorkTypeSource {
     static var selectableCases: [WorkTypeSource] {
         [
             .serviceStopType,
-            .jobTaskType,
-            .recurringServiceStopTaskType,
             .bodyOfWaterType,
             .serviceLocationType,
             .manualTag
@@ -623,17 +593,7 @@ extension CompanyUser {
 
 extension CompanyWorkType {
     var suggestedPayBasis: PayBasis {
-        if defaultRateType == .hourly {
-            return .technicianHourly
-        }
-
-        switch category {
-        case .route, .maintenance, .serviceCall, .commercial, .startup, .estimate:
-            return .serviceStop
-
-        case .repair, .installation, .cleaning, .drainAndRefill, .extra, .custom:
-            return .serviceStopTask
-        }
+        defaultRateType == .hourly ? .technicianHourly : .serviceStop
     }
 }
 

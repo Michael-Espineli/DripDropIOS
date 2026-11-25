@@ -57,7 +57,8 @@ struct AddNewShoppingListItemToNewJob: View {
                         draft: $draft,
                         title: "Item Details",
                         showCategoryPicker: false,
-                        showDescription: true
+                        showDescription: true,
+                        useJobCatalog: true
                     )
                     .ddCard()
 

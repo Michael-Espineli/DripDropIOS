@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+        A70B00C1A70B00C1A70B0001 /* ReportRuntime in Resources */ = {isa = PBXBuildFile; fileRef = A70B00C1A70B00C1A70B0003 /* ReportRuntime */; };
+        A70B00C1A70B00C1A70B0002 /* ReportRuntime in Resources */ = {isa = PBXBuildFile; fileRef = A70B00C1A70B00C1A70B0003 /* ReportRuntime */; };
 		00325B012194FCB97B143D09 /* LaborContractRecurringWorkPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DE125772C3DE0DA000A4E9F /* LaborContractRecurringWorkPicker.swift */; };
 		009DF70B9EFEE019A76D5B90 /* ContractCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38D10B2C19457D003EB3DB /* ContractCardView.swift */; };
 		0142483173DE5CE4A9AAAED5 /* WeatherSnapShotLong.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38D13A2C19457D003EB3DB /* WeatherSnapShotLong.swift */; };
@@ -1697,6 +1699,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+        A70B00C1A70B00C1A70B0003 /* ReportRuntime */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ReportRuntime; sourceTree = "<group>"; };
 		6D013F77303B302000A7A658 /* DripDropAdmin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DripDropAdmin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6D01C23C2FCB37F70071F1C9 /* CompanyActiveRouteOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanyActiveRouteOverviewView.swift; sourceTree = "<group>"; };
 		6D0288DC2DDF7E7D009D7952 /* CreateShoppingListItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateShoppingListItemView.swift; sourceTree = "<group>"; };
@@ -3528,6 +3531,7 @@
 			children = (
 				6D38CEB22C194552003EB3DB /* Report */,
 				6D38CEB32C194552003EB3DB /* ReportManager.swift */,
+                A70B00C1A70B00C1A70B0003 /* ReportRuntime */,
 				6D38CEB42C194552003EB3DB /* ReportViewModel.swift */,
 			);
 			path = Report;
@@ -5331,6 +5335,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+                A70B00C1A70B00C1A70B0001 /* ReportRuntime in Resources */,
 				1C3D67FBE291F211AFF10010 /* GoogleService-Info.plist in Resources */,
 				83D965EB728BCDA65F825BF3 /* GoogleService-Info-Dev.plist in Resources */,
 				ABDB2BA12255828DE1C9845A /* GoogleService-Info-prod.plist in Resources */,
@@ -5343,6 +5348,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+                A70B00C1A70B00C1A70B0002 /* ReportRuntime in Resources */,
 				6DCE41902D8236A8008A26AC /* GoogleService-Info.plist in Resources */,
 				6D5A2B892F240A2E002478E9 /* GoogleService-Info-Dev.plist in Resources */,
 				6D38CD8E2C19442B003EB3DB /* Preview Assets.xcassets in Resources */,

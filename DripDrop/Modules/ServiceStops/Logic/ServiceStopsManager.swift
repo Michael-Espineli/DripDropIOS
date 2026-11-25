@@ -69,6 +69,10 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
     var defaultWorkTypeIds: [String]?
     var manualPayOverrideCents: Int?
     var manualPayOverrideNotes: String?
+    var plannedServiceStopId: String? = nil
+    var payrollMode: String? = nil
+    var payrollStackBehavior: String? = nil
+    var payQuantity: Double? = nil
     var recommendedServiceAgreementPriceCents: Int?
     var fieldRecommendedServiceAgreementPriceCents: Int?
     var recommendedServiceAgreementRateType: String?
@@ -245,6 +249,10 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
             case defaultWorkTypeIds = "legacyDefaultWorkTypeIds"
             case manualPayOverrideCents = "manualPayOverrideCents"
             case manualPayOverrideNotes = "manualPayOverrideNotes"
+            case plannedServiceStopId
+            case payrollMode
+            case payrollStackBehavior
+            case payQuantity
             case recommendedServiceAgreementPriceCents = "recommendedServiceAgreementPriceCents"
             case fieldRecommendedServiceAgreementPriceCents = "fieldRecommendedServiceAgreementPriceCents"
             case recommendedServiceAgreementRateType = "recommendedServiceAgreementRateType"

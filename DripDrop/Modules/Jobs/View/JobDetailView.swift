@@ -610,13 +610,23 @@ extension JobDetailView {
                 Image(systemName: jobDetailTabIcon(option))
                     .font(.caption.weight(.semibold))
 
-                Text(option)
+                Text(jobDetailTabTitle(option))
                     .font(.caption.weight(.semibold))
                     .lineLimit(1)
             }
             .modifier(WorkspaceControlModifier(tone: isSelected ? .blue : .slate))
         }
         .buttonStyle(.plain)
+    }
+
+    private func jobDetailTabTitle(_ option: String) -> String {
+        switch option {
+        case "Plans": return "Overview"
+        case "Planned": return "Job Plan"
+        case "Actual": return "Schedule & Work"
+        case "Materials": return "Products"
+        default: return option
+        }
     }
 
     private func jobDetailTabIsSelected(_ option: String) -> Bool {
@@ -936,10 +946,6 @@ extension JobDetailView {
                             value: JobDashboardMoneyFormatter.money(summary.plannedServiceStopLaborCents)
                         )
 
-                        JobDashboardDetailRow(
-                            title: "Planned Task Labor",
-                            value: JobDashboardMoneyFormatter.money(summary.plannedTaskLaborCents)
-                        )
 
                         JobDashboardDetailRow(
                             title: "Planned Material Cost",
@@ -1244,7 +1250,7 @@ extension JobDetailView {
             .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             
             VStack(alignment: .leading, spacing: 8) {
-                Text("Planned Labor Cost")
+                Text("Company labor budget")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
 
@@ -1276,10 +1282,6 @@ extension JobDetailView {
                     cents: VM.plannedServiceStopLaborCents
                 )
 
-                JobEditInfoMoneyRow(
-                    title: "Planned Task Labor",
-                    cents: VM.plannedTaskLaborCents
-                )
 
                 JobEditInfoMoneyRow(
                     title: "Planned Total Labor",
@@ -2757,7 +2759,7 @@ extension JobDetailView {
                     job: job,
                     plannedServiceStops: VM.plannedServiceStops,
                     jobTasks: VM.jobTaskList,
-                    shoppingItems: VM.shoppingItemList,
+                    shoppingItems: VM.shoppingItemList.filter { $0.materialUsageOnly != true },
                     dataService: dataService
                 )
                 .presentationDetents([.medium, .large])
@@ -2773,7 +2775,7 @@ extension JobDetailView {
                     sourceJob: job,
                     plannedServiceStops: VM.plannedServiceStops,
                     jobTasks: VM.jobTaskList,
-                    shoppingItems: VM.shoppingItemList,
+                    shoppingItems: VM.shoppingItemList.filter { $0.materialUsageOnly != true },
                     dataService: dataService
                 )
                 .presentationDetents([.large])

@@ -116,21 +116,9 @@ extension ShoppingListItemDraft {
         prepKeys: [String],
         shoppingListActive: Bool = true
     ) -> ShoppingListItem {
-        let quantityValue = Double(quantity) ?? 0
-
-        let plannedTotalCostCents: Int? = {
-            guard let plannedUnitCostCents else { return nil }
-            return Int((Double(plannedUnitCostCents) * quantityValue).rounded())
-        }()
-
-        let plannedTotalPriceCents: Int? = {
-            guard let plannedUnitPriceCents else { return nil }
-            return Int((Double(plannedUnitPriceCents) * quantityValue).rounded())
-        }()
-
         let status: ShoppingListStatus = .needToPurchase
         let productId = selectedProductId
-        let vendorItemId = selectedDataBaseItemId
+        let vendorItemId = jobVendorItemId
 
         return ShoppingListItem(
             id: "comp_shop_" + UUID().uuidString,
@@ -167,13 +155,14 @@ extension ShoppingListItemDraft {
             actionDate: shoppingListActive ? Date() : nil,
             assignedTechIds: [],
 
-            dbItemId: subCategory == .dataBase ? vendorItemId : nil,
-            dbItemName: subCategory == .dataBase ? selectedDataBaseItem.name : nil,
-            itemId: productId ?? (subCategory == .dataBase ? vendorItemId : nil),
+            dbItemId: vendorItemId,
+            dbItemName: subCategory == .product ? jobSupplier?.name : (vendorItemId == nil ? nil : selectedDataBaseItem.name),
+            itemId: vendorItemId,
             itemType: subCategory.rawValue,
             purchasedItem: nil,
             invoiced: false,
 
+            taxable: subCategory == .product ? selectedProduct.taxable : nil,
             plannedUnitCostCents: plannedUnitCostCents,
             plannedUnitPriceCents: plannedUnitPriceCents,
             plannedTotalCostCents: plannedTotalCostCents,
@@ -209,7 +198,8 @@ struct AddNewShoppingListItemToJob: View {
                         draft: $draft,
                         title: "Item Details",
                         showCategoryPicker: false,
-                        showDescription: true
+                        showDescription: true,
+                        useJobCatalog: true
                     )
                     .ddCard()
 

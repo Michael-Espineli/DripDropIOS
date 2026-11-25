@@ -19,7 +19,6 @@ struct AddJobTemplateTaskSheet: View {
     @State private var name: String = ""
     @State private var type: JobTaskType = .basic
     @State private var description: String = ""
-    @State private var contractedRate: Int = 0
     @State private var estimatedTime: Int = 30
     @State private var customerApproval: Bool = false
 
@@ -163,23 +162,9 @@ struct AddJobTemplateTaskSheet: View {
     private var laborCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             JobTemplateSectionHeader(
-                title: "Labor Planning",
-                systemImage: "dollarsign.circle"
+                title: "Estimated Time",
+                systemImage: "clock"
             )
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Contracted / Planned Labor")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                MoneyTextField(cents: $contractedRate)
-
-                Text("This becomes the planned task labor when creating a job from this template.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Estimated Time")
@@ -250,7 +235,6 @@ struct AddJobTemplateTaskSheet: View {
                 name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                 type: type,
                 description: description,
-                contractedRate: contractedRate,
                 estimatedTime: estimatedTime,
                 customerApproval: customerApproval,
                 sortOrder: nextSortOrder

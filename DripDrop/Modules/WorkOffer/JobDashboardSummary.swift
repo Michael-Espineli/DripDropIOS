@@ -11,7 +11,6 @@ import Foundation
 struct JobDashboardSummary: Hashable {
     var jobRateCents: Int
 
-    var plannedTaskLaborCents: Int
     var plannedServiceStopLaborCents: Int
     
     var actualPayrollCents: Int
@@ -40,7 +39,7 @@ struct JobDashboardSummary: Hashable {
     var blockedTaskCount: Int = 0
     
     var plannedLaborCents: Int {
-        plannedTaskLaborCents + plannedServiceStopLaborCents
+        plannedServiceStopLaborCents
     }
     
     var plannedTotalCostCents: Int {

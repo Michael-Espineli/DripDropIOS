@@ -652,6 +652,10 @@ extension ProductionDataService {
                 }
                 if route.needsReopening {
                     updates["endTime"] = FieldValue.delete()
+                    updates["completedAt"] = FieldValue.delete()
+                    updates["completedDate"] = FieldValue.delete()
+                    updates["operationStatus"] = FieldValue.delete()
+                    updates["mileageStatus"] = FieldValue.delete()
                     updates["endMilage"] = FieldValue.delete()
                     updates["endMileage"] = FieldValue.delete()
                     updates["distance"] = FieldValue.delete()

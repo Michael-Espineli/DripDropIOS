@@ -101,7 +101,6 @@ struct CompanyPaySettingsView: View {
             presetSection
             payModeSection
             stopPaySection
-            taskPaySection
             hourlyPaySection
             poolIndustrySection
             payrollControlSection
@@ -182,8 +181,14 @@ struct CompanyPaySettingsView: View {
 
     private var stopPaySection: some View {
         Section {
-            Picker("Stop Pay", selection: $viewModel.settings.routePaySource) {
-                ForEach(RoutePaySource.allCases, id: \.self) { source in
+            Picker("Stop Pay", selection: Binding(get: {
+                switch viewModel.settings.routePaySource {
+                case .completedTasks, .serviceStopAndCompletedTasks: return .serviceStop
+                case .hourlyTaskActualTime: return .hourlyServiceStopDuration
+                default: return viewModel.settings.routePaySource
+                }
+            }, set: { viewModel.settings.routePaySource = $0 })) {
+                ForEach([RoutePaySource.serviceStop, .hourlyServiceStopDuration, .none], id: \.self) { source in
                     Text(source.title).tag(source)
                 }
             }
@@ -211,28 +216,12 @@ struct CompanyPaySettingsView: View {
         }
     }
 
-    private var taskPaySection: some View {
-        Section {
-            Picker("Task Pay", selection: $viewModel.settings.taskPaySource) {
-                ForEach(TaskPaySource.allCases, id: \.self) { source in
-                    Text(source.title).tag(source)
-                }
-            }
-
-            Text(viewModel.settings.taskPaySource.helpText)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        } header: {
-            Text("Completed Task Pay")
-        } footer: {
-            Text("This controls pay from completed ServiceStopTask records, such as filter cleanings, salt cell cleanings, repairs, installations, and extras.")
-        }
-    }
-
     private var hourlyPaySection: some View {
         Section {
-            Picker("Hourly Source", selection: $viewModel.settings.hourlyPaySource) {
-                ForEach(HourlyPaySource.allCases, id: \.self) { source in
+            Picker("Hourly Source", selection: Binding(get: {
+                viewModel.settings.hourlyPaySource == .taskActualTime ? .serviceStopDuration : viewModel.settings.hourlyPaySource
+            }, set: { viewModel.settings.hourlyPaySource = $0 })) {
+                ForEach(HourlyPaySource.allCases.filter { $0 != .taskActualTime }, id: \.self) { source in
                     Text(source.title).tag(source)
                 }
             }

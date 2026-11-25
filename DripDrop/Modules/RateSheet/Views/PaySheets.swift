@@ -518,7 +518,7 @@ struct CompanyPaySettings: Codable, Hashable {
     var payMode: CompanyPayMode
 
     var routePaySource: RoutePaySource
-    var taskPaySource: TaskPaySource
+    var taskPaySource: TaskPaySource?
     var hourlyPaySource: HourlyPaySource
 
     var allowMultipleWorkTypesPerStop: Bool
@@ -761,6 +761,9 @@ struct TechnicianPayLineItem: Identifiable, Codable, Hashable {
     var taskName: String?
     var serviceStopTypeName: String?
     var serviceStopCategory: ServiceStopCategory?
+    var payrollSource: String? = nil
+    var jobTaskId: String? = nil
+    var sourceTaskId: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -810,6 +813,9 @@ struct TechnicianPayLineItem: Identifiable, Codable, Hashable {
         case taskName
         case serviceStopTypeName
         case serviceStopCategory
+        case payrollSource
+        case jobTaskId
+        case sourceTaskId
     }
     
 }
@@ -1050,6 +1056,7 @@ enum PayLineItemVoidReason: String, Codable, Hashable, CaseIterable {
     case serviceStopReopened
     case serviceStopSkipped
     case taskReopened
+    case taskPayRetired
     case adminVoided
     case duplicate
 }

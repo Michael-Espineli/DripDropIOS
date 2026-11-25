@@ -665,12 +665,6 @@ struct WorkTypeMappingsView: View {
                     .fontWeight(.semibold)
             }
 
-            HStack {
-                Label("Task Pay Links", systemImage: "checklist")
-                Spacer()
-                Text("\(viewModel.taskMappingCount)")
-                    .fontWeight(.semibold)
-            }
 
             if viewModel.missingWorkTypeCount > 0 {
                 HStack {
@@ -809,7 +803,7 @@ struct WorkTypeMappingsEmptyState: View {
             Text("No pay type links yet")
                 .font(.headline)
 
-            Text("Add suggested pay type links or create one manually. Pay types handle normal stop pay; these links handle fallback stop sources and payable tasks.")
+            Text("Add suggested pay type links or create one manually. Use these links to resolve fallback service stop pay types.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

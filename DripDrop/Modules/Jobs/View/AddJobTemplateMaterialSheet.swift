@@ -32,16 +32,16 @@ struct AddJobTemplateMaterialSheet: View {
     }
 
     private var quantityValue: Double {
-        Double(draft.quantity) ?? 0
+        draft.quantityDouble
     }
 
     private var plannedTotalCostCents: Int {
-        Int((Double(plannedUnitCostCents) * quantityValue).rounded())
+        Int(exactly: (Double(plannedUnitCostCents) * quantityValue).rounded()) ?? 0
     }
 
     private var plannedTotalPriceCents: Int {
         guard billable else { return 0 }
-        return Int((Double(plannedUnitPriceCents) * quantityValue).rounded())
+        return Int(exactly: (Double(plannedUnitPriceCents) * quantityValue).rounded()) ?? 0
     }
 
     private var canSave: Bool {
@@ -61,11 +61,20 @@ struct AddJobTemplateMaterialSheet: View {
                             draft: $draft,
                             title: "Material Details",
                             showCategoryPicker: false,
-                            showDescription: true
+                            showDescription: true,
+                            useJobCatalog: true
                         )
                         .jobTemplateMaterialSheetCard()
-                        .onChange(of: draft.selectedDataBaseItem) { item in
-                            applyDatabaseItemSnapshot(item)
+                        .onChange(of: draft.selectedProduct) { product in
+                            guard draft.subCategory == .product, !product.id.isEmpty else { return }
+                            billable = product.billable != false
+                            plannedUnitCostCents = draft.plannedUnitCostCents ?? 0
+                            plannedUnitPriceCents = Int(product.sellPrice.rounded())
+                        }
+                        .onChange(of: draft.subCategory) { _ in
+                            billable = true
+                            plannedUnitCostCents = 0
+                            plannedUnitPriceCents = 0
                         }
 
                         pricingCard
@@ -77,7 +86,7 @@ struct AddJobTemplateMaterialSheet: View {
                     .padding(.top, 12)
                 }
             }
-            .navigationTitle("Add Material")
+            .navigationTitle("Add Product")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -105,7 +114,7 @@ struct AddJobTemplateMaterialSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Add Template Material")
+                    Text("Add Product to Template")
                         .font(.title3.weight(.semibold))
 
                     Text("Create reusable planned material for this job template.")
@@ -264,14 +273,15 @@ struct AddJobTemplateMaterialSheet: View {
                 name: draft.displayName,
                 description: draft.description,
                 quantity: draft.quantity,
-                dbItemId: draft.selectedDataBaseItemId,
-                genericItemId: "",
+                dbItemId: draft.jobVendorItemId,
+                genericItemId: draft.subCategory == .product ? draft.selectedProductId : nil,
                 plannedUnitCostCents: plannedUnitCostCents,
-                plannedUnitPriceCents: billable ? plannedUnitPriceCents : nil,
+                plannedUnitPriceCents: billable ? plannedUnitPriceCents : 0,
                 plannedTotalCostCents: plannedTotalCostCents,
-                plannedTotalPriceCents: billable ? plannedTotalPriceCents : nil,
+                plannedTotalPriceCents: plannedTotalPriceCents,
                 billable: billable,
-                sortOrder: nextSortOrder
+                sortOrder: nextSortOrder,
+                taxable: draft.subCategory == .product ? draft.selectedProduct.taxable : nil
             )
 
             try await dataService.saveJobTemplateShoppingItems([item])
@@ -284,22 +294,6 @@ struct AddJobTemplateMaterialSheet: View {
         }
     }
 
-    private func applyDatabaseItemSnapshot(_ item: DataBaseItem) {
-        guard !item.id.isEmpty else { return }
-
-        if plannedUnitCostCents == 0 {
-            plannedUnitCostCents = Int(item.rate)
-        }
-
-        if plannedUnitPriceCents == 0,
-           let sellPrice = item.sellPrice {
-            plannedUnitPriceCents = Int(sellPrice)
-        }
-
-        if draft.name.isEmpty {
-            draft.name = item.name
-        }
-    }
 }
 
 private extension View {

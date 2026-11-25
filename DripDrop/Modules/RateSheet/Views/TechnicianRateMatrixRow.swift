@@ -25,10 +25,10 @@ struct TechnicianRateMatrixRow: Identifiable, Hashable {
     init(workType: CompanyWorkType) {
         self.id = workType.id
         self.title = workType.name
-        self.subtitle = "\(workType.category.title) • \(workType.defaultRateType.title)"
+        self.subtitle = "\(workType.category.title) • \(workType.visitOrHourlyRateType.title)"
         self.iconName = workType.displayIconName
         self.workTypeId = workType.id
-        self.defaultRateType = workType.defaultRateType
+        self.defaultRateType = workType.visitOrHourlyRateType
         self.defaultPayBasis = workType.suggestedPayBasis
         self.isHourlyRow = false
     }
@@ -216,7 +216,7 @@ final class TechnicianRateMatrixViewModel: ObservableObject {
                 return rate.payBasis == .technicianHourly && rate.rateType == .hourly
             }
 
-            return true
+            return (rate.payBasis == .serviceStop || rate.payBasis == .technicianHourly) && rate.rateType != .flatPerTask
         }
 
         return candidates.sorted {
@@ -279,16 +279,19 @@ final class TechnicianRateMatrixViewModel: ObservableObject {
                     expiredOldRate: expiredOldRate,
                     newRate: newRate
                 )
-
-                replaceLocalRate(expiredOldRate)
-                upsertLocalRate(newRate)
             } else {
                 try await dataService.saveTechnicianRate(newRate)
-                upsertLocalRate(newRate)
             }
-
         } catch {
             alertMessage = "Could not save technician rate. \(error.userFacingMessage)"
+            showAlert = true
+            return
+        }
+
+        do {
+            rates = try await dataService.fetchTechnicianRates(companyId: companyId)
+        } catch {
+            alertMessage = "The rate was saved. Reload Technician Rates to see the updated schedule. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -348,22 +351,6 @@ final class TechnicianRateMatrixViewModel: ObservableObject {
         }
 
         return true
-    }
-
-    private func replaceLocalRate(_ rate: TechnicianRate) {
-        if let index = rates.firstIndex(where: { $0.id == rate.id }) {
-            rates[index] = rate
-        } else {
-            rates.append(rate)
-        }
-    }
-
-    private func upsertLocalRate(_ rate: TechnicianRate) {
-        if let index = rates.firstIndex(where: { $0.id == rate.id }) {
-            rates[index] = rate
-        } else {
-            rates.append(rate)
-        }
     }
 }
 
@@ -975,13 +962,13 @@ struct TechnicianRateEditorView: View {
                 .keyboardType(.decimalPad)
 
             Picker("Rate Type", selection: $rateType) {
-                ForEach(RateType.allCases, id: \.self) { type in
+                ForEach(RateType.allCases.filter { $0 != .flatPerTask }, id: \.self) { type in
                     Text(type.title).tag(type)
                 }
             }
 
             Picker("Pay Basis", selection: $payBasis) {
-                ForEach(PayBasis.allCases, id: \.self) { basis in
+                ForEach([PayBasis.serviceStop, .technicianHourly], id: \.self) { basis in
                     Text(basis.title).tag(basis)
                 }
             }

@@ -213,7 +213,7 @@ extension AddNewScheduleServiceStopToNewJobView {
                         } label: {
                             plannedStopSourceRow(
                                 title: plannedStop.name,
-                                subtitle: "\(plannedStop.serviceStopTypeName) • \(plannedStop.estimatedMinutes) min • \(plannedStop.taskIds.count) task(s)",
+                                subtitle: "\(plannedStop.serviceStopTypeName) • \(plannedStop.estimatedMinutes) min • \(plannedStop.taskIds.count) task(s)\nPay: \(plannedStop.scheduledPayDescription)",
                                 systemImage: plannedStop.serviceStopTypeImage.isEmpty ? "calendar" : plannedStop.serviceStopTypeImage,
                                 isSelected: VM.selectedPlannedServiceStop?.id == plannedStop.id
                             )
@@ -487,7 +487,8 @@ extension AddNewScheduleServiceStopToNewJobView {
 
                     dismiss()
                 } catch {
-                    print(error)
+                    VM.alertMessage = error.userFacingMessage
+                    VM.showAlert = true
 
                     #if os(iOS)
                     UINotificationFeedbackGenerator().notificationOccurred(.error)

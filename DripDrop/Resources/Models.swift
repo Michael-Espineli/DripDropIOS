@@ -77,6 +77,8 @@ struct FeatureFlag: Identifiable, Codable, Hashable {
             return "iOS Reimagined Main"
         case 15:
             return "Pool Equipment Scanner"
+        case 18:
+            return "Tester Strips"
         default:
             return ""
         }
@@ -110,6 +112,8 @@ struct FeatureFlag: Identifiable, Codable, Hashable {
             return "Enables the reimagined iOS main dashboard with route calendar access, technician repair requests, and assigned admin jobs."
         case 15:
             return "Enables the iOS pool equipment scanner for identifying equipment, mapping above-ground pipe pathways, and collecting technician-confirmed learning feedback."
+        case 18:
+            return "Enables tester strip setup, service-stop photo scanning and reading autofill, and review of saved strip photos."
         default:
             return ""
         }
@@ -129,6 +133,8 @@ enum FeatureFlagKey: String, CaseIterable {
     case alertsAndNotifications = "feature_flag_011"
     case iosReimaginedMain = "feature_flag_014"
     case poolEquipmentScanner = "feature_flag_015"
+    case employeePayroll = "feature_flag_017"
+    case testerStrips = "feature_flag_018"
 }
 
 struct AlertNotification: Identifiable, Codable, Hashable {
@@ -980,6 +986,9 @@ struct DataBaseItem:Identifiable,Codable,Hashable{
     var equipmentModelId: String?
     var equipmentModel: String?
     var manualPdfLink: String?
+    var active: Bool?
+    var archived: Bool?
+    var mergedIntoVendorItemId: String?
 
 }
 
@@ -1180,6 +1189,8 @@ struct PurchasedItem:Identifiable,Codable,Equatable,Hashable{
     var billable : Bool
     var invoiced : Bool
     var returned : Bool?
+    var personalPurchase: Bool? = nil
+    var receiptLineTotalCents: Int? = nil
 
     var customerId : String
     var customerName : String

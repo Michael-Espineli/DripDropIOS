@@ -222,14 +222,9 @@ final class AddNewJobViewModel:ObservableObject{
         }
     }
 
-    var plannedTaskLaborCents: Int {
-        jobTaskList.reduce(0) { total, task in
-            total + task.contractedRate
-        }
-    }
 
     var plannedTotalLaborCents: Int {
-        plannedStopLaborCents + plannedTaskLaborCents
+        plannedStopLaborCents
     }
 
     var plannedMaterialCostCents: Int {
@@ -522,7 +517,7 @@ final class AddNewJobViewModel:ObservableObject{
         let templateShoppingItems = try await templateShoppingItemsTask
 
         description = currentTemplate.description
-        rate = String(Double(currentTemplate.defaultRateCents) / 100.0)
+        rate = templateTasks.isEmpty ? String(Double(currentTemplate.defaultRateCents) / 100.0) : "0"
         laborCost = String(Double(currentTemplate.defaultLaborCostCents) / 100.0)
         issuePriority = currentTemplate.normalizedDefaultIssuePriority
 
@@ -531,7 +526,7 @@ final class AddNewJobViewModel:ObservableObject{
                 id: "comp_job_task_" + UUID().uuidString,
                 name: templateTask.name,
                 type: templateTask.type,
-                contractedRate: templateTask.contractedRate,
+                contractedRate: 0,
                 estimatedTime: templateTask.estimatedTime,
                 status: .draft,
                 customerApproval: templateTask.customerApproval,
@@ -545,18 +540,10 @@ final class AddNewJobViewModel:ObservableObject{
                 serviceLocationId: "",
                 bodyOfWaterId: "",
                 dataBaseItemId: templateTask.dataBaseItemId ?? "",
-                billingLaborPriceCents: templateTask.billingLaborPriceCents,
                 taxable: templateTask.taxable
             )
             task.sourceTemplateId = startingTemplate.id
             task.sourceTemplateTaskId = templateTask.id
-            task.payTypeId = templateTask.payTypeId
-            task.payTypeName = templateTask.payTypeName
-            task.payrollMode = templateTask.payrollMode
-            task.manualPayOverrideCents = templateTask.manualPayOverrideCents
-            task.manualPayOverrideNotes = templateTask.manualPayOverrideNotes
-            task.payrollStackBehavior = templateTask.payrollStackBehavior
-            task.payQuantity = templateTask.payQuantity
             return task
         }
 
@@ -581,7 +568,16 @@ final class AddNewJobViewModel:ObservableObject{
                 taskIds: templateStop.taskTemplateIds.compactMap { taskIdMap[$0] },
                 plannedLaborCostCents: templateStop.plannedLaborCostCents,
                 plannedLaborNotes: templateStop.plannedLaborNotes,
-                createdByUserId: createdByUserId
+                createdByUserId: createdByUserId,
+                payTypeId: templateStop.payTypeId,
+                payTypeName: templateStop.payTypeName,
+                payrollMode: templateStop.payrollMode,
+                manualPayOverrideCents: templateStop.manualPayOverrideCents,
+                manualPayOverrideNotes: templateStop.manualPayOverrideNotes,
+                payrollStackBehavior: templateStop.payrollStackBehavior,
+                payQuantity: templateStop.payQuantity,
+                billingLaborPriceCents: templateStop.billingLaborPriceCents,
+                sourceTemplatePlannedStopId: templateStop.id
             )
         }
 
@@ -594,6 +590,7 @@ final class AddNewJobViewModel:ObservableObject{
                 purchaserId: createdByUserId,
                 purchaserName: "",
                 genericItemId: templateItem.genericItemId ?? "",
+                productId: templateItem.genericItemId.flatMap { $0.isEmpty ? nil : $0 },
                 name: templateItem.name,
                 description: templateItem.description,
                 datePurchased: nil,
@@ -612,6 +609,7 @@ final class AddNewJobViewModel:ObservableObject{
                 shoppingListActive: false,
                 actionDate: nil,
                 dbItemId: templateItem.dbItemId,
+                itemId: templateItem.dbItemId,
                 purchasedItem: nil,
                 invoiced: false,
                 plannedUnitCostCents: templateItem.plannedUnitCostCents,
@@ -623,7 +621,7 @@ final class AddNewJobViewModel:ObservableObject{
 
         let stopIdMap = Dictionary(uniqueKeysWithValues: zip(templatePlannedStops.map(\.id), plannedServiceStops.map(\.id)))
         let templateLines = try await dataService.fetchJobTemplateLaborLineItems(companyId: companyId, templateId: startingTemplate.id)
-        laborLineItems = templateLines.map { $0.remapped(companyId: companyId, taskIds: taskIdMap, stopIds: stopIdMap, jobId: jobId) }
+        laborLineItems = templateLines.filter { !$0.isLegacyTaskCharge }.map { $0.remapped(companyId: companyId, taskIds: taskIdMap, stopIds: stopIdMap, jobId: jobId) }
         for index in shoppingItemList.indices {
             shoppingItemList[index].linkedTaskId = templateShoppingItems[index].linkedTaskId.flatMap { taskIdMap[$0] }
             shoppingItemList[index].taxable = templateShoppingItems[index].taxable
@@ -1630,10 +1628,6 @@ var customerView: some View {
                     cents: VM.plannedStopLaborCents
                 )
 
-                AddNewJobReviewMoneyRow(
-                    title: "Planned Task Labor",
-                    cents: VM.plannedTaskLaborCents
-                )
 
                 AddNewJobReviewMoneyRow(
                     title: "Planned Materials Cost",

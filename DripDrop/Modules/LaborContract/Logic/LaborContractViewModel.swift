@@ -168,7 +168,7 @@ final class LaborContractViewModel:ObservableObject{
             let jobTask = JobTask(
                 name: task.name,
                 type: task.type,
-                contractedRate: task.contractedRate,
+                contractedRate: 0,
                 estimatedTime: task.estimatedTime,
                 status: JobTaskStatus.unassigned,
                 customerApproval: task.customerApproval,

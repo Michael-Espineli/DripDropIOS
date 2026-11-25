@@ -398,6 +398,8 @@ final class RouteBoardViewModel: ObservableObject {
             showAlert = true
             resetAssignmentState(clearSelections: true)
             return true
+        } catch is CancellationError {
+            return false
         } catch {
             alertMessage = error.userFacingMessage
             showAlert = true

@@ -173,10 +173,6 @@ struct JobDashboardView: View {
                 value: JobDashboardMoneyFormatter.money(summary.plannedServiceStopLaborCents)
             )
 
-            JobDashboardDetailRow(
-                title: "Planned Task Labor",
-                value: JobDashboardMoneyFormatter.money(summary.plannedTaskLaborCents)
-            )
 
             JobDashboardDetailRow(
                 title: "Planned Total Labor",

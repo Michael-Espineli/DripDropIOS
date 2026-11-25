@@ -34,6 +34,7 @@ struct WorkOfferPayEstimateService {
         estimateDate: Date = Date()
     ) -> [WorkOfferPayEstimateLine] {
 
+        if paySource == .unpaid || paySource == .taskContractedRates { return [] }
         if paySource == .offeredAmount {
             return [
                 WorkOfferPayEstimateLine(
@@ -56,12 +57,7 @@ struct WorkOfferPayEstimateService {
 
         guard let worker = selectedWorker,
               !worker.userId.isEmpty else {
-            return tasks.map { task in
-                needsReviewTaskLine(
-                    task: task,
-                    notes: "Select a technician to estimate technician-rate pay."
-                )
-            }
+            return []
         }
 
         var lines: [WorkOfferPayEstimateLine] = []
@@ -73,7 +69,8 @@ struct WorkOfferPayEstimateService {
         )
 
         if context.settings.routePaySource == .serviceStop ||
-            context.settings.routePaySource == .serviceStopAndCompletedTasks {
+            context.settings.routePaySource == .serviceStopAndCompletedTasks ||
+            context.settings.routePaySource == .completedTasks {
             if stopWorkTypeIds.isEmpty {
                 lines.append(
                     WorkOfferPayEstimateLine(
@@ -112,207 +109,7 @@ struct WorkOfferPayEstimateService {
             }
         }
 
-        // Task-level estimate
-        if context.settings.taskPaySource != .none {
-            for task in tasks {
-                if let line = estimateTaskLine(
-                    companyId: companyId,
-                    worker: worker,
-                    task: task,
-                    taskPaySource: context.settings.taskPaySource,
-                    date: estimateDate
-                ) {
-                    lines.append(line)
-                }
-            }
-        }
-
-        return lines.filter { line in
-            if line.source == .serviceStop {
-                return !lines.contains { other in other.sourceTaskId != nil && other.workTypeId == line.workTypeId && tasks.first(where: { $0.id == other.sourceTaskId })?.payrollStackBehavior != "stackable" && ![WorkCategory.route, .maintenance, .serviceCall, .commercial, .startup, .estimate].contains(context.workTypes.first(where: { $0.id == line.workTypeId })?.category ?? .custom) }
-            }
-            if let taskId = line.sourceTaskId, let task = tasks.first(where: { $0.id == taskId }), task.payrollStackBehavior != "stackable", let type = context.workTypes.first(where: { $0.id == line.workTypeId }), [WorkCategory.route, .maintenance, .serviceCall, .commercial, .startup, .estimate].contains(type.category) {
-                return !lines.contains { $0.source == .serviceStop && $0.workTypeId == line.workTypeId }
-            }
-            return true
-        }
-    }
-
-    private func estimateTaskLine(companyId: String, worker: CompanyUser, task: JobTask, taskPaySource: TaskPaySource, date: Date) -> WorkOfferPayEstimateLine? {
-        if ["included", "unpaid"].contains(task.payrollMode ?? "") { return nil }
-        if task.payrollMode == "custom", let amount = task.manualPayOverrideCents {
-            return WorkOfferPayEstimateLine(id: "offer_custom_" + task.id, sourceTaskId: task.id, source: .manualAdjustment, workTypeId: task.payTypeId, workTypeName: task.payTypeName, title: task.name, rateAmountCents: amount, rateType: .manual, quantity: 1, quantityUnit: .each, totalAmountCents: amount, calculationStatus: amount >= 0 ? .calculated : .needsReview, notes: task.manualPayOverrideNotes)
-        }
-        guard var line = estimateTaskLineRaw(companyId: companyId, worker: worker, task: task, taskPaySource: taskPaySource, date: date) else { return nil }
-        if [.flatPerTask, .flatPerStop].contains(line.rateType), let quantity = task.payQuantity {
-            line.quantity = quantity
-            line.totalAmountCents = Int((Double(line.rateAmountCents) * quantity).rounded())
-            if quantity <= 0 { line.calculationStatus = .needsReview }
-        }
-        return line
-    }
-    private func estimateTaskLineRaw(
-        companyId: String,
-        worker: CompanyUser,
-        task: JobTask,
-        taskPaySource: TaskPaySource,
-        date: Date
-    ) -> WorkOfferPayEstimateLine? {
-        let workTypeId = task.payTypeId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-
-        guard !workTypeId.isEmpty else {
-            return needsReviewTaskLine(
-                task: task,
-                notes: "No pay type selected for task \(task.name)."
-            )
-        }
-
-        let workType = workTypesById[workTypeId]
-        let workTypeName = task.payTypeName ?? workType?.name
-
-        switch taskPaySource {
-        case .technicianRate:
-            return estimateTaskLineFromTechnicianRate(
-                companyId: companyId,
-                worker: worker,
-                source: .serviceStopTask,
-                sourceTaskId: task.id,
-                title: task.name,
-                workTypeId: workTypeId,
-                payBasis: .serviceStopTask,
-                preferredRateType: workType?.defaultRateType,
-                estimatedMinutes: task.estimatedTime,
-                date: date
-            )
-
-        case .taskContractedRate:
-            guard task.contractedRate > 0 else {
-                return nil
-            }
-
-            return flatTaskLine(
-                task: task,
-                workTypeId: workTypeId,
-                workTypeName: workTypeName
-            )
-
-        case .technicianRateThenTaskContractedRate:
-            guard let techLine = estimateTaskLineFromTechnicianRate(
-                companyId: companyId,
-                worker: worker,
-                source: .serviceStopTask,
-                sourceTaskId: task.id,
-                title: task.name,
-                workTypeId: workTypeId,
-                payBasis: .serviceStopTask,
-                preferredRateType: workType?.defaultRateType,
-                estimatedMinutes: task.estimatedTime,
-                date: date,
-                returnNeedsReviewWhenMissing: false
-            ) else {
-                return nil
-            }
-
-            if techLine.calculationStatus == .calculated {
-                return techLine
-            }
-
-            if task.contractedRate > 0 {
-                return flatTaskLine(
-                    task: task,
-                    workTypeId: workTypeId,
-                    workTypeName: workTypeName
-                )
-            }
-
-            return techLine
-
-        case .taskContractedRateThenTechnicianRate:
-            if task.contractedRate > 0 {
-                return flatTaskLine(
-                    task: task,
-                    workTypeId: workTypeId,
-                    workTypeName: workTypeName
-                )
-            }
-
-            return estimateTaskLineFromTechnicianRate(
-                companyId: companyId,
-                worker: worker,
-                source: .serviceStopTask,
-                sourceTaskId: task.id,
-                title: task.name,
-                workTypeId: workTypeId,
-                payBasis: .serviceStopTask,
-                preferredRateType: workType?.defaultRateType,
-                estimatedMinutes: task.estimatedTime,
-                date: date
-            )
-
-        case .hourlyEstimatedTime, .hourlyActualTime:
-            return estimateHourlyTaskLine(
-                companyId: companyId,
-                worker: worker,
-                task: task,
-                workTypeId: workTypeId,
-                workTypeName: workTypeName,
-                date: date
-            )
-
-        case .none:
-            return nil
-        }
-    }
-
-    private func flatTaskLine(
-        task: JobTask,
-        workTypeId: String?,
-        workTypeName: String?
-    ) -> WorkOfferPayEstimateLine {
-        let total = PayMath.calculateTotalAmountCents(
-            rateAmountCents: task.contractedRate,
-            rateType: .flatPerTask,
-            quantity: 1,
-            quantityUnit: .each
-        )
-
-        return WorkOfferPayEstimateLine(
-            id: "offer_estimate_task_\(task.id)",
-            sourceTaskId: task.id,
-            source: .serviceStopTask,
-            workTypeId: workTypeId,
-            workTypeName: workTypeName,
-            title: task.name,
-            rateAmountCents: task.contractedRate,
-            rateType: .flatPerTask,
-            quantity: 1,
-            quantityUnit: .each,
-            totalAmountCents: total,
-            calculationStatus: .calculated,
-            notes: "Estimated from task contracted rate."
-        )
-    }
-
-    private func estimateHourlyTaskLine(
-        companyId: String,
-        worker: CompanyUser,
-        task: JobTask,
-        workTypeId: String,
-        workTypeName: String?,
-        date: Date
-    ) -> WorkOfferPayEstimateLine {
-        estimateLineFromTechnicianRate(
-            companyId: companyId,
-            worker: worker,
-            source: .serviceStopTask,
-            sourceTaskId: task.id,
-            title: task.name,
-            workTypeId: workTypeId,
-            payBasis: .technicianHourly,
-            preferredRateType: .hourly,
-            estimatedMinutes: task.estimatedTime,
-            date: date
-        )
+        return lines
     }
 
     private func estimateLineFromTechnicianRate(
@@ -397,63 +194,6 @@ struct WorkOfferPayEstimateService {
             totalAmountCents: total,
             calculationStatus: rate.rateType == .percentage ? .needsReview : .calculated,
             notes: "Estimated from technician rate."
-        )
-    }
-
-    private func estimateTaskLineFromTechnicianRate(
-        companyId: String,
-        worker: CompanyUser,
-        source: PayLineItemSource,
-        sourceTaskId: String?,
-        title: String,
-        workTypeId: String,
-        payBasis: PayBasis,
-        preferredRateType: RateType?,
-        estimatedMinutes: Int,
-        date: Date,
-        returnNeedsReviewWhenMissing: Bool = true
-    ) -> WorkOfferPayEstimateLine? {
-        let line = estimateLineFromTechnicianRate(
-            companyId: companyId,
-            worker: worker,
-            source: source,
-            sourceTaskId: sourceTaskId,
-            title: title,
-            workTypeId: workTypeId,
-            payBasis: payBasis,
-            preferredRateType: preferredRateType,
-            estimatedMinutes: estimatedMinutes,
-            date: date,
-            returnNeedsReviewWhenMissing: returnNeedsReviewWhenMissing
-        )
-
-        if source == .serviceStopTask,
-           line.calculationStatus == .calculated,
-           line.rateAmountCents <= 0 {
-            return nil
-        }
-
-        return line
-    }
-
-    private func needsReviewTaskLine(
-        task: JobTask,
-        notes: String
-    ) -> WorkOfferPayEstimateLine {
-        WorkOfferPayEstimateLine(
-            id: "offer_estimate_task_needs_review_\(task.id)",
-            sourceTaskId: task.id,
-            source: .serviceStopTask,
-            workTypeId: nil,
-            workTypeName: nil,
-            title: task.name,
-            rateAmountCents: 0,
-            rateType: .manual,
-            quantity: 0,
-            quantityUnit: .each,
-            totalAmountCents: 0,
-            calculationStatus: .needsReview,
-            notes: notes
         )
     }
 

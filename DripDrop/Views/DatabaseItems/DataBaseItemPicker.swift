@@ -146,10 +146,21 @@ final class ProductCatalogPickerViewModel: ObservableObject {
     @Published var products: [GenericItem] = []
     @Published var filteredProducts: [GenericItem] = []
     @Published var searchTerm: String = ""
+    private(set) var jobSuppliers: [String: DataBaseItem] = [:]
 
-    func onLoad(companyId: String, onlyPartPurchaseAvailable: Bool) async throws {
-        let loadedProducts = try await dataService.getAllGenericDataBaseItems(companyId: companyId)
+    func onLoad(companyId: String, onlyPartPurchaseAvailable: Bool, onlyJobProducts: Bool = false) async throws {
+        let catalog: [GenericItem]
+        if onlyJobProducts {
+            async let products = dataService.fetchJobCatalogProducts(companyId: companyId)
+            async let suppliers = dataService.fetchJobCatalogSuppliers(companyId: companyId)
+            catalog = try await products
+            jobSuppliers = try await Self.resolveJobSuppliers(products: catalog, suppliers: suppliers)
+        } else {
+            catalog = try await dataService.getAllGenericDataBaseItems(companyId: companyId)
+        }
+        let loadedProducts = catalog
             .filter { product in
+                if onlyJobProducts { return product.isAvailableForJobs }
                 guard onlyPartPurchaseAvailable else { return product.active != false }
                 return product.isAvailableForPartPurchase
             }
@@ -159,6 +170,26 @@ final class ProductCatalogPickerViewModel: ObservableObject {
 
         products = loadedProducts
         filteredProducts = loadedProducts
+    }
+
+    static func resolveJobSuppliers(products: [GenericItem], suppliers: [DataBaseItem]) -> [String: DataBaseItem] {
+        var owners: [String: Set<String>] = [:]
+        for product in products where product.mergedIntoProductId?.isEmpty != false {
+            for supplierID in product.jobSupplierIDs { owners[supplierID, default: []].insert(product.id) }
+        }
+        let availableProducts = Dictionary(products.filter(\.isAvailableForJobs).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var selected: [String: DataBaseItem] = [:]
+        for supplier in suppliers.sorted(by: { $0.id < $1.id }) where supplier.active != false
+            && supplier.archived != true && supplier.mergedIntoVendorItemId?.isEmpty != false {
+            let explicit = [supplier.productId, supplier.genericItemId].compactMap { $0 }.first { !$0.isEmpty }
+            let reverse = owners[supplier.id]
+            let owner = explicit ?? (reverse?.count == 1 ? reverse?.first : nil)
+            guard let owner, let product = availableProducts[owner] else { continue }
+            if selected[owner] == nil || supplier.id == product.preferredVendorItemId {
+                selected[owner] = supplier
+            }
+        }
+        return selected
     }
 
     func searchFunction() {
@@ -179,11 +210,13 @@ struct ProductCatalogPicker: View {
     init(
         dataService: any ProductionDataServiceProtocol,
         product: Binding<GenericItem>,
-        onlyPartPurchaseAvailable: Bool = false
+        onlyPartPurchaseAvailable: Bool = false,
+        onJobProductSelected: ((GenericItem, DataBaseItem?) -> Void)? = nil
     ) {
         _VM = StateObject(wrappedValue: ProductCatalogPickerViewModel(dataService: dataService))
         self._product = product
         _onlyPartPurchaseAvailable = State(wrappedValue: onlyPartPurchaseAvailable)
+        self.onJobProductSelected = onJobProductSelected
     }
 
     @Environment(\.dismiss) private var dismiss
@@ -192,6 +225,7 @@ struct ProductCatalogPicker: View {
     @StateObject var VM: ProductCatalogPickerViewModel
     @State var onlyPartPurchaseAvailable: Bool
     @Binding var product: GenericItem
+    let onJobProductSelected: ((GenericItem, DataBaseItem?) -> Void)?
     @State private var loadError: String?
 
     var body: some View {
@@ -262,7 +296,11 @@ struct ProductCatalogPicker: View {
 
                 ForEach(VM.filteredProducts) { item in
                     Button {
-                        product = item
+                        if let onJobProductSelected {
+                            onJobProductSelected(item, VM.jobSuppliers[item.id])
+                        } else {
+                            product = item
+                        }
                         dismiss()
                     } label: {
                         productRow(item)
@@ -310,7 +348,11 @@ struct ProductCatalogPicker: View {
     private func productSubtitle(_ item: GenericItem) -> String {
         var parts: [String] = []
 
-        if item.productSellPriceCents > 0 {
+        if onJobProductSelected != nil {
+            let cost = VM.jobSuppliers[item.id]?.rate ?? item.defaultCostCents ?? item.cost ?? item.rate
+            parts.append("Company cost \(DataBaseItemMoneyFormatter.moneyFromCents(cost))")
+            parts.append(item.billable == false ? "Non-billable" : "Customer price \(DataBaseItemMoneyFormatter.moneyFromCents(item.sellPrice))")
+        } else if item.productSellPriceCents > 0 {
             parts.append(DataBaseItemMoneyFormatter.moneyFromCents(Double(item.productSellPriceCents)))
         }
 
@@ -334,7 +376,8 @@ struct ProductCatalogPicker: View {
         do {
             try await VM.onLoad(
                 companyId: company.id,
-                onlyPartPurchaseAvailable: onlyPartPurchaseAvailable
+                onlyPartPurchaseAvailable: onlyPartPurchaseAvailable,
+                onlyJobProducts: onJobProductSelected != nil
             )
         } catch {
             loadError = "Could not load products."

@@ -102,6 +102,8 @@ extension MoveServiceStopsConfirmation {
                             try await serviceStopVM.updateServiceStopListServiceDate(companyId: company.id, serviceStopList: selectedServiceStopList, date: date,companyUser:tech)
                         }
                         dismiss()
+                    } catch is CancellationError {
+                        return
                     } catch {
                         moveError = error.userFacingMessage
                         showMoveError = true

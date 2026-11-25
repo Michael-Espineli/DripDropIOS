@@ -8,6 +8,7 @@
 import SwiftUI
 import FirebaseFirestore
 import FirebaseFirestoreSwift
+import FirebaseFunctions
 
 struct PurchaseDetailView: View {
     @EnvironmentObject var customerEnviromentalObject: CustomerViewModel
@@ -811,6 +812,23 @@ private extension PurchaseDetailView {
         defer { isPurchaseWorkflowUpdating = false }
 
         do {
+            if let jobId = item.jobId, !jobId.isEmpty {
+                let result = try await Functions.functions().httpsCallable("reconcileJobMaterialPurchase").call([
+                    "companyId": company.id, "shoppingItemId": item.id, "purchasedItemId": currentPurchase.id
+                ])
+                let match = result.data as? [String: Any]
+                var updatedPurchase = currentPurchase
+                updatedPurchase.shoppingListItemId = item.id
+                updatedPurchase.jobId = jobId
+                updatedPurchase.jobName = match?["jobName"] as? String
+                updatedPurchase.status = match?["purchaseStatus"] as? String ?? "Connected to Job"
+                purchase = updatedPurchase
+                useablePurchaseItem = updatedPurchase
+                displayShoppingListItemName = item.name.isEmpty ? item.id : item.name
+                selectedShoppingListPicker = false
+                return
+            }
+
             if let previousShoppingItemId = currentPurchase.shoppingListItemId,
                !previousShoppingItemId.isEmpty,
                previousShoppingItemId != item.id {

@@ -14,13 +14,11 @@
 //  recompute [private]
 //  updateServiceStopStatus
 //  startActiveRoute
-//  stopActiveRoute
 //  pauseActiveRoute
 //  resumeActiveRoute
 //  requestWhenInUseLocation
 //  requestAlwaysLocation
 //  updateRouteStartMilage
-//  updateRouteEndtMilage
 //  moveServiceStops
 //  moveServiceStopsPermanently
 //  updateOrderList  Delete?
@@ -104,6 +102,10 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     @Published private(set) var locationAuthorizationStatus: CLAuthorizationStatus = .notDetermined
     @Published private(set) var previousRoutesNeedingReview: [ActiveRoute] = []
     @Published private(set) var recentActiveRoutes: [ActiveRoute] = []
+    @Published private(set) var employeeRouteMileageRequired = false
+    @Published private(set) var routeMileagePromptsEnabled = true
+    private var routeMileageSettingsScope: [String] = []
+    private var routeMileageSettingsListeners: [ListenerRegistration] = []
     @Published private(set) var pendingServiceStopStartPrompt: ServiceStopStartPrompt?
     @Published private(set) var pendingServiceStopEndPrompt: ServiceStopEndPrompt?
     init(dataService:any ProductionDataServiceProtocol, routeLocationManager: RouteLocationManager = RouteLocationManager()){
@@ -242,6 +244,61 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     private var notifiedServiceStopEndPromptIds: Set<String> = []
     private var optimisticServiceStopOverrides: [String: ServiceStop] = [:]
 
+    func requiresRouteMileage(for workerType: WorkerTypeEnum?) -> Bool {
+        (workerType ?? currentCompanyUser?.workerType) == .employee && employeeRouteMileageRequired
+    }
+
+    func shouldPromptForRouteMileage(for workerType: WorkerTypeEnum?) -> Bool {
+        switch workerType ?? currentCompanyUser?.workerType {
+        case .employee: return employeeRouteMileageRequired
+        case .contractor: return routeMileagePromptsEnabled
+        default: return true
+        }
+    }
+
+    private func watchRouteMileageSettings(companyId: String, user: DBUser) {
+        let scope = [companyId, user.id]
+        guard routeMileageSettingsScope != scope else { return }
+        routeMileageSettingsListeners.forEach { $0.remove() }
+        routeMileageSettingsScope = scope
+        employeeRouteMileageRequired = false
+        routeMileagePromptsEnabled = user.settings?.promptForRouteMileage != false
+        let firestore = Firestore.firestore()
+        routeMileageSettingsListeners = [
+            firestore.collection("companies").document(companyId).collection("settings").document("companyWide")
+                .addSnapshotListener { [weak self] snapshot, _ in
+                    let required = snapshot?.data()?["requireEmployeeRouteMileage"] as? Bool
+                    Task { @MainActor in
+                        guard let self, self.routeMileageSettingsScope == scope else { return }
+                        self.employeeRouteMileageRequired = required == true
+                    }
+                },
+            firestore.collection("users").document(user.id)
+                .addSnapshotListener { [weak self] snapshot, _ in
+                    guard let snapshot else { return }
+                    let settings = snapshot.data()?["settings"] as? [String: Any]
+                    let enabled = settings?["promptForRouteMileage"] as? Bool
+                    Task { @MainActor in
+                        guard let self, self.routeMileageSettingsScope == scope else { return }
+                        self.routeMileagePromptsEnabled = enabled != false
+                    }
+                }
+        ]
+    }
+
+    func saveRouteMileagePrompts(_ enabled: Bool, userId: String?) async -> Bool {
+        guard let userId else { return false }
+        do {
+            try await Firestore.firestore().collection("users").document(userId).updateData(["settings.promptForRouteMileage": enabled])
+            if routeMileageSettingsScope.last == userId { routeMileagePromptsEnabled = enabled }
+            return true
+        } catch {
+            alertMessage = error.userFacingMessage
+            showAlert = true
+            return false
+        }
+    }
+
     // Summary log tracking
     @Published private(set) var currentSummaryLogId: String? = nil
     @Published private(set) var currentSummaryType: WorkLogType? = nil
@@ -264,7 +321,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                 limit: 10
             )
 
-            self.previousRoutesNeedingReview = try await needsReview
+            self.previousRoutesNeedingReview = try await needsReview.filter { $0.endTime == nil || $0.status != .finished }
             self.recentActiveRoutes = try await recentRoutes
         } catch {
             print("[MobileDailyRouteDisplayViewModel][loadPreviousRouteReview] Error")
@@ -398,6 +455,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         print("  [MobileDailyRouteDisplayViewModel][start] techId: \(user.id) Date: \(date) Day Of Week: \(weekDay(date: date))")
         cachedCompanyId = companyId
         cachedUser = user
+        watchRouteMileageSettings(companyId: companyId, user: user)
 
         dataService.addCompanyUserListener(companyId: companyId, status: "Active",
         ) { [weak self] route in
@@ -457,6 +515,9 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
 
     func stop() {
         dataService.stopServiceStopActiveRouteRecurringRouteListenrs()
+        routeMileageSettingsListeners.forEach { $0.remove() }
+        routeMileageSettingsListeners.removeAll()
+        routeMileageSettingsScope.removeAll()
     }
     
     private func recompute(companyId:String,whoCalled:String,user:DBUser,date:Date) {
@@ -641,11 +702,10 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         totalCount: Int,
         finishedCount: Int
     ) -> ActiveRouteStatus {
+        if route.endTime != nil { return .finished }
         guard totalCount > 0 else { return route.status }
 
-        if finishedCount == totalCount {
-            return route.endMilage != nil && route.endTime != nil ? .finished : .inProgress
-        }
+        if finishedCount == totalCount { return .inProgress }
 
         if finishedCount == 0 {
             return route.startTime == nil ? .didNotStart : .inProgress
@@ -834,6 +894,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                 activeRoute = savedRoute
                 startTime = savedRoute.startTime ?? startTime
                 startMilage = savedRoute.startMilage ?? 0
+                inputStartMilage = savedRoute.startMilage.map { String($0) } ?? ""
                 endMilage = 0
                 inputEndMilage = ""
                 showEndMilage = false
@@ -858,47 +919,6 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         }
     }
 
-    func stopActiveRoute(
-        companyId: String?,
-        companyName:String?,
-        user:DBUser?,
-        route routeToStop: ActiveRoute? = nil
-    ){
-        guard let companyId else {return}
-        guard let companyName else {return}
-        guard let user else {return}
-        guard var route = routeToStop ?? activeRoute else {return}
-            //Change Status
-        let endTime = routeEndTime(for: route)
-        route.status = .finished
-        route.endTime = endTime
-
-        dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: route.id, status: .finished)
-        if let endMilage = route.endMilage {
-            syncRouteVehicleMileage(
-                companyId: companyId,
-                route: route,
-                miles: endMilage,
-                syncSelectedVehicle: route.id == activeRoute?.id
-            )
-        }
-        
-        if route.id == activeRoute?.id {
-            self.activeRoute = route
-            Task { @MainActor in
-                if let companyId = self.cachedCompanyId, let activeId = self.activeRoute?.id {
-                    await closeCurrentSummaryLog(companyId: companyId, activeRouteId: activeId)
-                }
-            }
-
-            // Stop location tracking at end of route
-            routeLocationManager.stopTracking()
-            stopRouteLogTimer(companyId: companyId, activeRouteId: route.id, user: user, companyName: companyName)
-        }
-
-        dataService.updateActiveRouteEndTime(companyId: companyId, activeRouteId: route.id, endTime: endTime)
-
-    }
     func pauseActiveRoute(companyId: String?,companyName:String? , user:DBUser?){
         guard let companyId else {return}
         guard let companyName else {return}
@@ -1007,86 +1027,19 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         }
     }
 
-    private func syncRouteVehicleMileage(
-        companyId: String,
-        route: ActiveRoute,
-        miles: Double,
-        syncSelectedVehicle: Bool
-    ) {
-        if syncSelectedVehicle {
-            selectedVehical.miles = miles
-            updateActiveRouteSelectedVehicle(companyId: companyId, activeRouteId: route.id, miles: miles)
-            updateSelectedCompanyFleetMileage(companyId: companyId, miles: miles)
-        }
-
-        if route.vehicleSource == "Personal" {
-            let ownerId = route.personalVehicleOwnerId ?? currentCompanyUser?.userId
-            var personalVehicle = route.personalVehicle ?? currentCompanyUser?.personalVehicle
-            personalVehicle?.miles = miles
-
-            if let ownerId,
-               let personalVehicle {
-                dataService.updateActiveRoutePersonalVehicle(
-                    companyId: companyId,
-                    activeRouteId: route.id,
-                    ownerId: ownerId,
-                    personalVehicle: personalVehicle
-                )
-
-                if ownerId == currentCompanyUser?.userId,
-                   let companyUserId = currentCompanyUser?.id {
-                    let allowPersonalVehicle = currentCompanyUser?.allowPersonalVehicle ?? true
-
-                    Task {
-                        do {
-                            try await dataService.updateCompanyUserPersonalVehicle(
-                                companyId: companyId,
-                                companyUserId: companyUserId,
-                                allowPersonalVehicle: allowPersonalVehicle,
-                                personalVehicle: personalVehicle
-                            )
-                        } catch {
-                            print("[MobileDailyRouteDisplayViewModel][syncRouteVehicleMileage] \(error)")
-                        }
-                    }
-                }
-            }
-
-            return
-        }
-
-        let routeVehicleId = route.vehicalId.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !routeVehicleId.isEmpty else { return }
-
-        if syncSelectedVehicle && routeVehicleId == selectedVehical.id {
-            return
-        }
-
-        Task {
-            do {
-                try await dataService.updateVehicalMilage(
-                    companyId: companyId,
-                    vehicalId: routeVehicleId,
-                    miles: miles
-                )
-            } catch {
-                print("[MobileDailyRouteDisplayViewModel][syncRouteVehicleMileage] \(error)")
-            }
+    func attachSelectedRouteVehicle(companyId: String?, routeId: String) async {
+        guard let companyId, activeRoute?.id == routeId, !isChangingRouteState else { return }
+        isChangingRouteState = true
+        defer { isChangingRouteState = false }
+        updateActiveRouteSelectedVehicle(companyId: companyId, activeRouteId: routeId)
+        do {
+            try await Firestore.firestore().waitForPendingWrites()
+        } catch {
+            alertMessage = error.userFacingMessage
+            showAlert = true
         }
     }
 
-    private func routeEndTime(for route: ActiveRoute) -> Date {
-        if Calendar.current.isDate(route.date, inSameDayAs: Date()) {
-            return Date()
-        }
-
-        return Calendar.current.date(
-            byAdding: .second,
-            value: -1,
-            to: route.date.endOfDay()
-        ) ?? route.date
-    }
-    
     func updateRouteStartMilage(companyId: String?){
         print("  [MobileDailyRouteDisplayViewModel][updateRouteStartMilage]")
         guard let companyId else {return}
@@ -1098,95 +1051,64 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         updateSelectedCompanyFleetMileage(companyId: companyId, miles: milage)
     }
     
-    func updateRouteEndtMilage(
-        companyId: String?,
-        route routeToUpdate: ActiveRoute? = nil,
-        syncSelectedVehicle: Bool = true
-    ) {
-        print("  [MobileDailyRouteDisplayViewModel][updateRouteEndtMilage]")
-
-        guard let companyId else { return }
-        guard var route = routeToUpdate ?? activeRoute else { return }
-        guard let milage = Double(inputEndMilage) else { return }
-
-        dataService.updateActiveRouteEndMilage(
-            companyId: companyId,
-            activeRouteId: route.id,
-            endMilage: milage
-        )
-        if syncSelectedVehicle {
-            syncRouteVehicleMileage(
-                companyId: companyId,
-                route: route,
-                miles: milage,
-                syncSelectedVehicle: true
-            )
-        } else {
-            syncRouteVehicleMileage(
-                companyId: companyId,
-                route: route,
-                miles: milage,
-                syncSelectedVehicle: false
-            )
-        }
-
-        if let startMilage = route.startMilage {
-            dataService.updateActiveRouteDistnace(
-                companyId: companyId,
-                activeRouteId: route.id,
-                distance: milage - startMilage
-            )
-        }
-
-        route.endMilage = milage
-        if route.id == activeRoute?.id {
-            activeRoute = route
-            endMilage = milage
-        }
+    func prepareRouteMileage(_ route: ActiveRoute) {
+        inputStartMilage = route.startMilage.map { String($0) } ?? ""
+        inputEndMilage = route.endMilage.map { String($0) } ?? ""
     }
 
-    func finishRouteWithEndMileage(
+    func saveRouteMileage(
         companyId: String?,
         companyName: String?,
         user: DBUser?,
-        route routeToFinish: ActiveRoute? = nil
-    ) {
-        print("  [MobileDailyRouteDisplayViewModel][finishRouteWithEndMileage]")
+        route: ActiveRoute,
+        finish: Bool,
+        includeReadings: Bool = true
+    ) async -> Bool {
+        guard let companyId, let user, !isChangingRouteState else { return false }
+        let isSelectedRoute = route.id == activeRoute?.id
+        isChangingRouteState = true
+        defer { isChangingRouteState = false }
+        do {
+            var fields: [String: Any] = [
+                "companyId": companyId, "routeId": route.id,
+                "action": finish ? "finish" : "mileage",
+                "timeZone": TimeZone.current.identifier
+            ]
+            if includeReadings {
+                if let start = Double(inputStartMilage), start != route.startMilage { fields["startMileage"] = start }
+                if let end = Double(inputEndMilage), end != route.endMilage { fields["endMileage"] = end }
+            }
+            let result = try await FunctionsManager.shared.technicianWorkflow("updateRouteMileage", payload: fields)
+            guard let values = result["route"] as? [String: Any] else { throw FireBaseRead.unableToRead }
+            guard cachedCompanyId == companyId, cachedUser?.id == user.id else { return true }
 
-        guard let companyId else { return }
-        guard let companyName else { return }
-        guard let user else { return }
-        guard var route = routeToFinish ?? activeRoute else { return }
-        guard let milage = Double(inputEndMilage) else { return }
+            var saved = route
+            saved.status = ActiveRouteStatus(rawValue: values["status"] as? String ?? "") ?? route.status
+            saved.startMilage = (values["startMilage"] ?? values["startMileage"]) as? Double
+            saved.endMilage = (values["endMilage"] ?? values["endMileage"]) as? Double
+            saved.distanceMiles = values["distanceMiles"] as? Double ?? route.distanceMiles
+            if let ended = values["endTime"] as? Double { saved.endTime = Date(timeIntervalSince1970: ended / 1000) }
 
-        dataService.updateActiveRouteEndMilage(
-            companyId: companyId,
-            activeRouteId: route.id,
-            endMilage: milage
-        )
-
-        if let startMilage = route.startMilage {
-            dataService.updateActiveRouteDistnace(
-                companyId: companyId,
-                activeRouteId: route.id,
-                distance: milage - startMilage
-            )
+            recentActiveRoutes = recentActiveRoutes.map { $0.id == saved.id ? saved : $0 }
+            previousRoutesNeedingReview = previousRoutesNeedingReview.filter { $0.id != saved.id || saved.endTime == nil }
+            if isSelectedRoute, activeRoute?.id == route.id {
+                activeRoute = saved
+                startMilage = saved.startMilage ?? 0
+                endMilage = saved.endMilage ?? 0
+                if finish, let companyName {
+                    routeLocationManager.stopTracking()
+                    await closeCurrentSummaryLog(companyId: companyId, activeRouteId: route.id)
+                    stopRouteLogTimer(companyId: companyId, activeRouteId: route.id, user: user, companyName: companyName)
+                }
+            }
+            return true
+        } catch {
+            alertMessage = error.userFacingMessage
+            showAlert = true
+            return false
         }
-
-        route.endMilage = milage
-        if route.id == activeRoute?.id {
-            activeRoute = route
-            endMilage = milage
-        }
-
-        stopActiveRoute(
-            companyId: companyId,
-            companyName: companyName,
-            user: user,
-            route: route
-        )
     }
-    
+
     func cancelMove(){
         self.selectedServiceStops = []
         self.moveDate = Date()
@@ -1210,16 +1132,22 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         }
     }
 
+    private var isSubmittingPermanentMove = false
+
     func moveServiceStopsPermanently(companyId: String?) {
-        guard let companyId, !selectedServiceStops.isEmpty, !selectedTech.userId.isEmpty else { return }
+        guard let companyId, !selectedServiceStops.isEmpty, !selectedTech.userId.isEmpty, !isSubmittingPermanentMove else { return }
+        isSubmittingPermanentMove = true
         let stops = selectedServiceStops, tech = selectedTech, day = newDay
         Task {
+            defer { isSubmittingPermanentMove = false }
             do {
                 try await FunctionsManager.shared.updateServiceStopPermanently(companyId:companyId,serviceStopList:stops,newTech:tech,newDay:day)
                 cancelMove()
                 enableMove = false
                 alertMessage = "Permanent move saved."
                 showAlert = true
+            } catch is CancellationError {
+                return
             } catch {
                 alertMessage = error.userFacingMessage
                 showAlert = true
@@ -2630,12 +2558,10 @@ func initalLoad(companyId:String,user:DBUser,date:Date) async throws {
         workingActiveRoute.finishedStops = finishedCount
         print("1")
         //Status
-        if workingActiveRoute.totalStops == workingActiveRoute.finishedStops {
-            if workingActiveRoute.endMilage != nil && workingActiveRoute.endTime != nil {
-                workingActiveRoute.status = .finished
-            } else {
-                workingActiveRoute.status = .inProgress
-            }
+        if workingActiveRoute.endTime != nil {
+            workingActiveRoute.status = .finished
+        } else if workingActiveRoute.totalStops == workingActiveRoute.finishedStops {
+            workingActiveRoute.status = .inProgress
         } else if workingActiveRoute.finishedStops == 0 {
             workingActiveRoute.status = .didNotStart
         } else {
@@ -2738,40 +2664,8 @@ func initalLoad(companyId:String,user:DBUser,date:Date) async throws {
             
             //Updating Active Route Status
             
-            if workingActiveRoute.totalStops == workingActiveRoute.finishedStops {
-                
-                print("Active Route Finished")
-                
-                print(" - Stops equal total stops")
-                
-                let routeHasCloseout = workingActiveRoute.endMilage != nil && workingActiveRoute.endTime != nil
-                let nextStatus: ActiveRouteStatus = routeHasCloseout ? .finished : .inProgress
-                
-                if workingActiveRoute.status != nextStatus{
-                    
-                    print("Updating Active Route Status")
-                    
-                    dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: workingActiveRoute.id, status: nextStatus)
-                    
-                }
-                
-                if !routeHasCloseout {
-                    
-                    print("Either endMilage or end time is optional")
-                    
-                } else {
-                    
-                    print("End Of Route Already Submitted")
-                    
-                }
-                
-            } else {
-                
-                dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: workingActiveRoute.id, status: .inProgress)
-                
-                print("Active Route Not Finished")
-                
-            }
+            let nextStatus: ActiveRouteStatus = workingActiveRoute.endTime != nil ? .finished : workingActiveRoute.status
+            dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: workingActiveRoute.id, status: nextStatus)
             self.activeRoute = workingActiveRoute
             
             //Updating Active Route Total Stops

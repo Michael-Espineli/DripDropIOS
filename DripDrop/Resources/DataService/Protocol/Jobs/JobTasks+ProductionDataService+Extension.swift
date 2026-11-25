@@ -35,14 +35,7 @@ extension ProductionDataService {
         // Patch editable fields only; preserve server-owned agreement/assignment metadata.
         let updates: [String: Any] = [
             "name": task.name, "type": task.type.rawValue,
-            "contractedRate": task.contractedRate, "estimatedTime": task.estimatedTime,
-            "payTypeId": task.payTypeId as Any? ?? NSNull(),
-            "payTypeName": task.payTypeName as Any? ?? NSNull(),
-            "payrollMode": task.payrollMode as Any? ?? NSNull(),
-            "manualPayOverrideCents": task.manualPayOverrideCents as Any? ?? NSNull(),
-            "manualPayOverrideNotes": task.manualPayOverrideNotes as Any? ?? NSNull(),
-            "payrollStackBehavior": task.payrollStackBehavior as Any? ?? NSNull(),
-            "payQuantity": task.payQuantity as Any? ?? NSNull()
+            "estimatedTime": task.estimatedTime,
         ]
         try await workOrderTaskDocument(companyId: companyId, workOrderId: jobId, taskId: task.id).updateData(updates)
     }

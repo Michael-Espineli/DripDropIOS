@@ -64,14 +64,6 @@ struct AddNewTaskToNewJob: View {
                 }
             }
         })
-        .onChange(of: VM.contractedRateString, perform: { str in
-            let isNumber = VM.checkNumber(numberStr: str)
-            if str != "" {
-                if !isNumber {
-                    VM.contractedRateString = "0"
-                }
-            }
-        })
         .onChange(of: VM.estimatedTimeString, perform: { str in
             let isNumber = VM.checkNumber(numberStr: str)
             if str != "" {
@@ -104,8 +96,6 @@ extension AddNewTaskToNewJob {
                         .font(.headline.weight(.semibold))
 
                     draftTaskField(title: "Name", placeholder: "Name", text: $VM.name)
-                    draftTaskField(title: "Task cost budget", placeholder: "Task cost budget", text: $VM.contractedRateString)
-                    TaskPayFields(draft: $VM.taskPayDraft, dataService: VM.dataService, companyId: masterDataManager.currentCompany?.id ?? "")
                     draftTaskField(title: "Estimated Time", placeholder: "Estimated Time", text: $VM.estimatedTimeString)
 
                     Divider().opacity(0.15)

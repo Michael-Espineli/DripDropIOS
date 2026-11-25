@@ -731,7 +731,8 @@ extension ProductionDataService {
         preparedJob.activeSolutionId = planId
         let materialPrice = materials.reduce(0) { $0 + ($1.plannedTotalPriceCents ?? Int((Double($1.quantity ?? "1") ?? 1) * Double($1.plannedUnitPriceCents ?? 0))) }
         let materialCost = materials.reduce(0) { $0 + ($1.plannedTotalCostCents ?? Int((Double($1.quantity ?? "1") ?? 1) * Double($1.plannedUnitCostCents ?? 0))) }
-        if scope.laborLineItems.isEmpty && job.rate != 0 {
+        let usesLegacyTemplatePrice = job.sourceTemplateId?.isEmpty != false || scope.tasks.isEmpty
+        if usesLegacyTemplatePrice && scope.laborLineItems.isEmpty && job.rate != 0 && !lines.contains(where: { $0.priceCents != 0 }) {
             var legacy = JobLaborLineItem(id: "comp_job_labor_line_" + job.id)
             legacy.name = job.sourceTemplateName ?? "Labor"
             legacy.companyId = companyId
@@ -749,7 +750,7 @@ extension ProductionDataService {
         }
         preparedJob.laborLineItems = lines
         preparedJob.estimateLaborLineItems = lines
-        if !lines.isEmpty || materialPrice != 0 {
+        if !usesLegacyTemplatePrice || !lines.isEmpty || materialPrice != 0 {
             preparedJob.rate = lines.reduce(0) { $0 + $1.priceCents } + materialPrice
             preparedJob.laborCost = lines.reduce(0) { $0 + ($1.internalCostCents ?? 0) }
         }
@@ -816,6 +817,9 @@ extension ProductionDataService {
                 root["solutionSelectionStatus"] = "Draft"
                 root["activePlanTier"] = 2
                 root["activeSolutionTier"] = 2
+                root["estimateLineItems"] = planLines
+                root["estimateSubtotalCents"] = saved.rate
+                root["estimateTotalCents"] = saved.rate
                 let stopNumbers = Dictionary(uniqueKeysWithValues: scope.scheduledStops.enumerated().map { ($0.element.id, "SS\(nextStop + $0.offset)") })
                 if let first = scope.scheduledStops.first {
                     root["scheduledServiceStopId"] = first.id
@@ -830,7 +834,8 @@ extension ProductionDataService {
                     "serviceLocationId": job.serviceLocationId, "name": job.sourceTemplateName ?? "Starter Plan",
                     "description": job.description, "planTier": 2, "solutionTier": 2, "status": "Draft", "isActivePlan": true, "isAccepted": false,
                     "tasks": taskRows, "plannedServiceStops": stopRows, "shoppingItems": materialRows,
-                    "laborLineItems": lineRows, "estimateLaborLineItems": lineRows, "lineItems": planLines, "contractLineItemsSnapshot": planLines,
+                    "laborLineItems": lineRows, "estimateLaborLineItems": lineRows, "lineItems": planLines,
+                    "estimateLineItems": planLines, "contractLineItemsSnapshot": planLines,
                     "subtotalAmountCents": saved.rate, "totalAmountCents": saved.rate, "rate": saved.rate,
                     "laborCost": saved.laborCost, "laborCostCents": saved.laborCost, "internalCostCents": totalCost,
                     "createdAt": Timestamp(date: job.dateCreated), "updatedAt": Timestamp(date: job.dateCreated),

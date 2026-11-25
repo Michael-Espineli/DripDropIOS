@@ -9,12 +9,10 @@ final class EditTaskViewModel: ObservableObject {
     init(dataService: any ProductionDataServiceProtocol, task: JobTask, jobId: String) {
         self.dataService = dataService
         self.originalTask = task
-        self.taskPayDraft = TaskPayDraft(task: task)
         self.jobId = jobId
         // Prefill editable fields from the original task
         self.name = task.name
         self.selectedTaskType = task.type
-        self.contractedRateString = String(Double(task.contractedRate) / 100)
         self.estimatedTimeString = String(task.estimatedTime)
         self.quantityString = "0"
         self.selectedEquipment = Equipment(
@@ -74,8 +72,6 @@ final class EditTaskViewModel: ObservableObject {
 
     // Editable fields
     @Published var name: String = ""
-    @Published var contractedRateString: String = "0"
-    @Published var taskPayDraft = TaskPayDraft()
     @Published var estimatedTimeString: String = "0"
     @Published var quantityString: String = "0"
 
@@ -162,13 +158,9 @@ final class EditTaskViewModel: ObservableObject {
     func checkNumber(numberStr: String) -> Bool { numberStr.isNumber }
 
     func updateExistingTask(companyId: String) async throws {
-        if let message = taskPayDraft.validationMessage { throw NSError(domain: "TaskPay", code: 1, userInfo: [NSLocalizedDescriptionKey: message]) }
         if name.isEmpty { throw AddNewTaskToJobError.noName }
-        if contractedRateString.isEmpty { throw AddNewTaskToJobError.noContractedRate }
         if estimatedTimeString.isEmpty { throw AddNewTaskToJobError.noEstimatedTime }
 
-        guard let contractedRateDouble = Double(contractedRateString) else { throw AddNewTaskToJobError.noContractedRate }
-        let contractedRate = Int(contractedRateDouble * 100)
         guard let estimatedTime = Int(estimatedTimeString) else { throw AddNewTaskToJobError.noEstimatedTime }
         _ = Double(quantityString) // quantity may be unused for some types
 
@@ -186,9 +178,7 @@ final class EditTaskViewModel: ObservableObject {
         var updated = originalTask
         updated.name = name
         updated.type = selectedTaskType
-        updated.contractedRate = contractedRate
         updated.estimatedTime = estimatedTime
-        taskPayDraft.apply(to: &updated)
         try await dataService.updateJobTaskDetails(companyId: companyId, jobId: jobId, task: updated)
 
     }
@@ -227,10 +217,6 @@ struct EditTaskView: View {
                 }
             }
         }
-        .onChange(of: VM.contractedRateString) { str in
-            let isNumber = VM.checkNumber(numberStr: str)
-            if str != "" && !isNumber { VM.contractedRateString = String(str.dropLast()) }
-        }
         .onChange(of: VM.estimatedTimeString) { str in
             let isNumber = VM.checkNumber(numberStr: str)
             if str != "" && !isNumber { VM.estimatedTimeString = String(str.dropLast()) }
@@ -246,13 +232,6 @@ extension EditTaskView {
                 TextField("Name", text: $VM.name)
                     .modifier(TextFieldModifier())
             }
-            HStack {
-                Text("Task cost budget").bold(true)
-                TextField("Task cost budget", text: $VM.contractedRateString)
-                    .keyboardType(.decimalPad)
-                    .modifier(TextFieldModifier())
-            }
-            TaskPayFields(draft: $VM.taskPayDraft, dataService: VM.dataService, companyId: masterDataManager.currentCompany?.id ?? "")
             HStack {
                 Text("Estimated Time").bold(true)
                 TextField("Estimated Time", text: $VM.estimatedTimeString)

@@ -32,6 +32,7 @@ struct ShoppingListItem: Identifiable, Codable, Hashable {
     var datePurchased: Date?
     var quantity: String?
     var installedQuantity: Double? = nil
+    var materialUsageOnly: Bool? = nil
 
     // Job
     var jobId: String?
@@ -100,7 +101,7 @@ extension ShoppingListItem {
         case name
         case description
         case datePurchased
-        case quantity, installedQuantity
+        case quantity, installedQuantity, materialUsageOnly
         case jobId
         case customerId
         case customerName
@@ -197,6 +198,7 @@ extension ShoppingListItem {
         self.linkedTaskType = Self.decodeString(container, forKey: .linkedTaskType)
         self.linkedTaskStatus = Self.decodeString(container, forKey: .linkedTaskStatus)
         self.installedEquipmentId = Self.decodeString(container, forKey: .installedEquipmentId)
+        self.materialUsageOnly = try? container.decodeIfPresent(Bool.self, forKey: .materialUsageOnly)
         self.installedAt = Self.decodeDate(container, forKey: .installedAt)
 
         self.taxable = try container.decodeIfPresent(Bool.self, forKey: .taxable)
@@ -255,6 +257,7 @@ extension ShoppingListItem {
         try container.encodeIfPresent(linkedTaskType, forKey: .linkedTaskType)
         try container.encodeIfPresent(linkedTaskStatus, forKey: .linkedTaskStatus)
         try container.encodeIfPresent(installedEquipmentId, forKey: .installedEquipmentId)
+        try container.encodeIfPresent(materialUsageOnly, forKey: .materialUsageOnly)
         try container.encodeIfPresent(installedAt, forKey: .installedAt)
         try container.encodeIfPresent(plannedUnitCostCents, forKey: .plannedUnitCostCents)
         try container.encodeIfPresent(plannedUnitPriceCents, forKey: .plannedUnitPriceCents)

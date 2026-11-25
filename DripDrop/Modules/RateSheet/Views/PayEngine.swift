@@ -83,7 +83,7 @@ struct PayEngine {
     func generateLineItems(
         companyId: String,
         serviceStop: ServiceStop,
-        tasks: [ServiceStopTask],
+        tasks _: [ServiceStopTask],
         now: Date = Date()
     ) -> [TechnicianPayLineItem] {
 
@@ -108,10 +108,10 @@ struct PayEngine {
             ]
         }
 
-        // Hourly-only companies should generate pay from ActiveRoute / ActiveRouteLog,
-        // not from individual service stops.
+        // Stop duration is the visit-based option for hourly-only companies.
         if settings.payMode == .hourlyOnly {
-            return []
+            guard settings.hourlyPaySource == .serviceStopDuration || settings.hourlyPaySource == .taskActualTime else { return [] }
+            return payableLineItems([makeServiceStopHourlyLine(companyId: companyId, serviceStop: serviceStop, now: now)])
         }
 
         var lineItems: [TechnicianPayLineItem] = []
@@ -119,7 +119,7 @@ struct PayEngine {
         // MARK: Stop-Level Production Pay
 
         switch settings.routePaySource {
-        case .serviceStop, .serviceStopAndCompletedTasks:
+        case .serviceStop, .serviceStopAndCompletedTasks, .completedTasks:
             let stopWorkTypeIds = serviceStopWorkTypeIds(for: serviceStop)
 
             if stopWorkTypeIds.isEmpty {
@@ -163,7 +163,7 @@ struct PayEngine {
                 }
             }
 
-        case .hourlyServiceStopDuration:
+        case .hourlyServiceStopDuration, .hourlyTaskActualTime:
             lineItems.append(
                 makeServiceStopHourlyLine(
                     companyId: companyId,
@@ -172,36 +172,8 @@ struct PayEngine {
                 )
             )
 
-        case .completedTasks, .hourlyTaskActualTime, .none:
+        case .none:
             break
-        }
-
-        // MARK: Task-Level Pay
-
-        let finishedTasks = tasks.filter { $0.isFinishedForPay }
-
-        let effectiveTaskPaySource: TaskPaySource = {
-            if settings.routePaySource == .hourlyTaskActualTime {
-                return .hourlyActualTime
-            } else {
-                return settings.taskPaySource
-            }
-        }()
-
-        guard effectiveTaskPaySource != .none else {
-            return payableLineItems(lineItems)
-        }
-
-        for task in finishedTasks {
-            if let line = makeTaskLine(
-                companyId: companyId,
-                serviceStop: serviceStop,
-                task: task,
-                taskPaySource: effectiveTaskPaySource,
-                now: now
-            ) {
-                lineItems.append(line)
-            }
         }
 
         return payableLineItems(lineItems)
@@ -234,40 +206,17 @@ private extension PayEngine {
     ) -> TechnicianPayLineItem {
         let worker = serviceStopWorker(serviceStop)
         let workType = workTypesById[workTypeId]
-        let primaryPayBasis = serviceStopProductionPayBasis(for: workType)
-        let fallbackPayBasis: PayBasis = primaryPayBasis == .serviceStop
-            ? .serviceStopTask
-            : .serviceStop
+        let payBasis = workType?.suggestedPayBasis ?? .serviceStop
 
-        let primaryRate = activeRate(
+        guard let rate = activeRate(
             companyId: companyId,
             technicianId: worker.userId,
             workTypeId: workTypeId,
-            payBasis: primaryPayBasis,
-            preferredRateType: workType?.defaultRateType,
+            payBasis: payBasis,
+            preferredRateType: workType?.visitOrHourlyRateType,
             date: serviceStop.serviceDate,
-            allowGeneralHourlyFallback: false
-        )
-
-        let fallbackRate: TechnicianRate? = {
-            guard primaryRate == nil else { return nil }
-
-            payrollDebug(
-                "[serviceStopRate] No \(primaryPayBasis.rawValue) rate for stop pay type \(workType?.name ?? workTypeId). Trying \(fallbackPayBasis.rawValue)."
-            )
-
-            return activeRate(
-                companyId: companyId,
-                technicianId: worker.userId,
-                workTypeId: workTypeId,
-                payBasis: fallbackPayBasis,
-                preferredRateType: workType?.defaultRateType,
-                date: serviceStop.serviceDate,
-                allowGeneralHourlyFallback: false
-            )
-        }()
-
-        guard let rate = primaryRate ?? fallbackRate else {
+            allowGeneralHourlyFallback: payBasis == .technicianHourly
+        ) else {
             return needsReviewLine(
                 serviceStop: serviceStop,
                 serviceStopTask: nil,
@@ -277,16 +226,11 @@ private extension PayEngine {
                 workTypeName: workType?.name,
                 completedDate: serviceStop.serviceDate,
                 now: now,
-                notes: "No active production rate found for \(worker.userName) and pay type \(workType?.name ?? workTypeId). Checked \(primaryPayBasis.rawValue) and \(fallbackPayBasis.rawValue)."
+                notes: "No active rate found for \(worker.userName) and pay type \(workType?.name ?? workTypeId)."
             )
         }
 
-        let quantityInfo = quantityAndUnit(
-            for: rate.rateType,
-            serviceStop: serviceStop,
-            task: nil,
-            minutesOverride: nil
-        )
+        let quantityInfo = quantityAndUnit(for: rate.rateType, serviceStop: serviceStop)
 
         return lineFromRate(
             serviceStop: serviceStop,
@@ -300,9 +244,7 @@ private extension PayEngine {
             quantityUnit: quantityInfo.unit,
             completedDate: serviceStop.serviceDate,
             now: now,
-            notes: rate.payBasis == primaryPayBasis
-                ? nil
-                : "Used \(rate.payBasis.title) rate for stop-level payroll because the service stop pay type is configured with \(primaryPayBasis.title) as its preferred pay basis."
+            notes: nil
         )
     }
 
@@ -359,342 +301,6 @@ private extension PayEngine {
 
 private extension PayEngine {
 
-    func makeTaskLine(
-        companyId: String,
-        serviceStop: ServiceStop,
-        task: ServiceStopTask,
-        taskPaySource: TaskPaySource,
-        now: Date
-    ) -> TechnicianPayLineItem? {
-        let worker = taskWorker(serviceStop: serviceStop, task: task)
-        let directPayTypeId = task.payTypeId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-
-        guard !directPayTypeId.isEmpty else {
-            return needsReviewLine(
-                serviceStop: serviceStop,
-                serviceStopTask: task,
-                worker: worker,
-                source: .serviceStopTask,
-                workTypeId: nil,
-                workTypeName: nil,
-                completedDate: serviceStop.serviceDate,
-                now: now,
-                notes: "No pay type selected for task: \(task.name)"
-            )
-        }
-
-        let workType = workTypesById[directPayTypeId]
-        let resolvedWorkTypeName = task.payTypeName ?? workType?.name
-
-        switch taskPaySource {
-        case .technicianRate:
-            return taskLineFromTechnicianRate(
-                companyId: companyId,
-                serviceStop: serviceStop,
-                task: task,
-                worker: worker,
-                workTypeId: directPayTypeId,
-                workTypeName: resolvedWorkTypeName,
-                preferredRateType: workType?.defaultRateType,
-                now: now
-            )
-
-        case .taskContractedRate:
-            return taskLineFromContractedRate(
-                serviceStop: serviceStop,
-                task: task,
-                worker: worker,
-                workTypeId: directPayTypeId,
-                workTypeName: resolvedWorkTypeName,
-                now: now
-            )
-
-        case .technicianRateThenTaskContractedRate:
-            if let line = taskLineFromTechnicianRate(
-                companyId: companyId,
-                serviceStop: serviceStop,
-                task: task,
-                worker: worker,
-                workTypeId: directPayTypeId,
-                workTypeName: resolvedWorkTypeName,
-                preferredRateType: workType?.defaultRateType,
-                now: now,
-                returnNilWhenMissingRate: true
-            ) {
-                return line
-            }
-
-            return taskLineFromContractedRate(
-                serviceStop: serviceStop,
-                task: task,
-                worker: worker,
-                workTypeId: directPayTypeId,
-                workTypeName: resolvedWorkTypeName,
-                now: now
-            )
-
-        case .taskContractedRateThenTechnicianRate:
-            if task.contractedRate > 0 {
-                return taskLineFromContractedRate(
-                    serviceStop: serviceStop,
-                    task: task,
-                    worker: worker,
-                    workTypeId: directPayTypeId,
-                    workTypeName: resolvedWorkTypeName,
-                    now: now
-                )
-            }
-
-            return taskLineFromTechnicianRate(
-                companyId: companyId,
-                serviceStop: serviceStop,
-                task: task,
-                worker: worker,
-                workTypeId: directPayTypeId,
-                workTypeName: resolvedWorkTypeName,
-                preferredRateType: workType?.defaultRateType,
-                now: now
-            )
-
-        case .hourlyActualTime:
-            return taskLineFromHourlyRate(
-                companyId: companyId,
-                serviceStop: serviceStop,
-                task: task,
-                worker: worker,
-                workTypeId: directPayTypeId,
-                workTypeName: resolvedWorkTypeName,
-                minutes: task.actualTime,
-                now: now,
-                notes: "Hourly pay from task actualTime."
-            )
-
-        case .hourlyEstimatedTime:
-            return taskLineFromHourlyRate(
-                companyId: companyId,
-                serviceStop: serviceStop,
-                task: task,
-                worker: worker,
-                workTypeId: directPayTypeId,
-                workTypeName: resolvedWorkTypeName,
-                minutes: task.estimatedTime,
-                now: now,
-                notes: "Hourly pay from task estimatedTime."
-            )
-
-        case .none:
-            return nil
-        }
-    }
-
-    func taskLineFromTechnicianRate(
-        companyId:String,
-        serviceStop: ServiceStop,
-        task: ServiceStopTask,
-        worker: PayrollWorkerSnapshot,
-        workTypeId: String,
-        workTypeName: String?,
-        preferredRateType: RateType?,
-        now: Date,
-        returnNilWhenMissingRate: Bool = false
-    ) -> TechnicianPayLineItem? {
-        guard let rate = activeRate(
-            companyId: companyId,
-            technicianId: worker.userId,
-            workTypeId: workTypeId,
-            payBasis: .serviceStopTask,
-            preferredRateType: preferredRateType,
-            date: serviceStop.serviceDate,
-            allowGeneralHourlyFallback: false
-        ) else {
-            if returnNilWhenMissingRate {
-                return nil
-            }
-
-            return needsReviewLine(
-                serviceStop: serviceStop,
-                serviceStopTask: task,
-                worker: worker,
-                source: .serviceStopTask,
-                workTypeId: workTypeId,
-                workTypeName: workTypeName,
-                completedDate: serviceStop.serviceDate,
-                now: now,
-                notes: "No active technician task rate found for \(worker.userName) and pay type \(workTypeName ?? workTypeId)."
-            )
-        }
-
-        guard rate.amountCents > 0 else {
-            payrollDebug(
-                "Skipping task pay line because technician task rate is 0. rateId: \(rate.id), taskId: \(task.id), workType: \(workTypeName ?? workTypeId)"
-            )
-            return nil
-        }
-
-        let quantityInfo = quantityAndUnit(
-            for: rate.rateType,
-            serviceStop: serviceStop,
-            task: task,
-            minutesOverride: nil
-        )
-
-        return lineFromRate(
-            serviceStop: serviceStop,
-            serviceStopTask: task,
-            worker: worker,
-            source: .serviceStopTask,
-            workTypeId: workTypeId,
-            workTypeName: workTypeName,
-            rate: rate,
-            quantity: quantityInfo.quantity,
-            quantityUnit: quantityInfo.unit,
-            completedDate: serviceStop.serviceDate,
-            now: now,
-            notes: nil
-        )
-    }
-
-    func taskLineFromContractedRate(
-        serviceStop: ServiceStop,
-        task: ServiceStopTask,
-        worker: PayrollWorkerSnapshot,
-        workTypeId: String,
-        workTypeName: String?,
-        now: Date
-    ) -> TechnicianPayLineItem? {
-        guard task.contractedRate > 0 else {
-            payrollDebug(
-                "Skipping task pay line because contractedRate is 0. taskId: \(task.id), taskName: \(task.name), workType: \(workTypeName ?? workTypeId)"
-            )
-            return nil
-        }
-
-        let total = PayMath.calculateTotalAmountCents(
-            rateAmountCents: task.contractedRate,
-            rateType: .flatPerTask,
-            quantity: 1,
-            quantityUnit: .each
-        )
-
-        return TechnicianPayLineItem(
-            id: makeLineId(
-                source: .serviceStopTask,
-                serviceStopId: serviceStop.id,
-                serviceStopTaskId: task.id,
-                activeRouteId: nil,
-                activeRouteLogId: nil,
-                technicianId: worker.userId,
-                workTypeId: workTypeId
-            ),
-            companyId: serviceStop.companyId,
-            technicianId: worker.userId,
-            technicianName: worker.userName,
-            workerType: worker.workerType,
-            source: .serviceStopTask,
-            serviceStopId: serviceStop.id,
-            serviceStopTaskId: task.id,
-            activeRouteId: nil,
-            activeRouteLogId: nil,
-            workTypeId: workTypeId,
-            workTypeName: workTypeName,
-            rateId: nil,
-            rateAmountCents: task.contractedRate,
-            rateType: .flatPerTask,
-            payBasis: .serviceStopTask,
-            quantity: 1,
-            quantityUnit: .each,
-            totalAmountCents: total,
-            completedDate: serviceStop.serviceDate,
-            calculatedAt: now,
-            calculationStatus: .calculated,
-            approvedAt: nil,
-            approvedByUserId: nil,
-            paidAt: nil,
-            paidByUserId: nil,
-            voidedAt: nil,
-            voidedByUserId: nil,
-            voidReason: nil,
-            payStatementId: nil,
-            exportBatchId: nil,
-            notes: "Used ServiceStopTask.contractedRate.",
-            adminReviewNotes: nil,
-            lineNumber: nil,
-            lineReference: nil,
-            paymentReference: nil,
-            displayTitle: payrollDisplayTitle(
-                serviceStop: serviceStop,
-                serviceStopTask: task,
-                workTypeName: workTypeName
-            ),
-            displaySubtitle: payrollDisplaySubtitle(
-                serviceStop: serviceStop,
-                serviceStopTask: task,
-                workTypeName: workTypeName
-            ),
-            customerId: serviceStop.customerId,
-            customerName: serviceStop.customerName,
-            serviceLocationId: serviceStop.serviceLocationId,
-            serviceLocationAddress: serviceStop.address.streetAddress,
-            jobId: serviceStop.jobId.isEmpty ? nil : serviceStop.jobId,
-            jobInternalId: nil,
-            taskName: task.name,
-            serviceStopTypeName: serviceStop.type,
-            serviceStopCategory: serviceStop.resolvedCategory
-        )
-    }
-    func taskLineFromHourlyRate(
-        companyId: String,
-        serviceStop: ServiceStop,
-        task: ServiceStopTask,
-        worker: PayrollWorkerSnapshot,
-        workTypeId: String,
-        workTypeName: String?,
-        minutes: Int,
-        now: Date,
-        notes: String
-    ) -> TechnicianPayLineItem {
-        guard let rate = activeRate(
-            companyId: companyId,
-            technicianId: worker.userId,
-            workTypeId: workTypeId,
-            payBasis: .technicianHourly,
-            preferredRateType: .hourly,
-            date: serviceStop.serviceDate,
-            allowGeneralHourlyFallback: true
-        ) else {
-            return needsReviewLine(
-                serviceStop: serviceStop,
-                serviceStopTask: task,
-                worker: worker,
-                source: .serviceStopTask,
-                workTypeId: workTypeId,
-                workTypeName: workTypeName,
-                completedDate: serviceStop.serviceDate,
-                now: now,
-                notes: "No active hourly rate found for \(worker.userName)."
-            )
-        }
-
-        return lineFromRate(
-            serviceStop: serviceStop,
-            serviceStopTask: task,
-            worker: worker,
-            source: .serviceStopTask,
-            workTypeId: workTypeId,
-            workTypeName: workTypeName,
-            rate: rate,
-            quantity: Double(minutes),
-            quantityUnit: .minutes,
-            completedDate: serviceStop.serviceDate,
-            now: now,
-            notes: notes
-        )
-    }
-}
-
-// MARK: - Shared Line Builders
-
-private extension PayEngine {
     func manualPayOverrideLine(
         serviceStop: ServiceStop,
         amountCents: Int,
@@ -1078,6 +684,7 @@ private extension PayEngine {
         }
 
         let candidates = rates.filter { rate in
+            guard rate.rateType != .flatPerTask else { return reject("retiredTaskRate") }
             guard rate.companyId == companyId else {
                 return reject("companyId")
             }
@@ -1143,21 +750,6 @@ private extension PayEngine {
             .first
     }
 
-    func serviceStopProductionPayBasis(for workType: CompanyWorkType?) -> PayBasis {
-        guard let workType else {
-            return .serviceStop
-        }
-
-        let suggestedBasis = workType.suggestedPayBasis
-
-        switch suggestedBasis {
-        case .serviceStop, .serviceStopTask:
-            return suggestedBasis
-        case .technicianHourly, .manualAdjustment:
-            return .serviceStop
-        }
-    }
-
     func rateIsUsable(_ rate: TechnicianRate, on date: Date) -> Bool {
         guard rate.status != .draft else { return false }
         guard rate.status != .archived else { return false }
@@ -1196,58 +788,16 @@ private extension PayEngine {
         )
     }
 
-    func taskWorker(
-        serviceStop: ServiceStop,
-        task: ServiceStopTask
-    ) -> PayrollWorkerSnapshot {
-        let workerId = task.workerId.isBlank ? serviceStop.techId : task.workerId
-
-        let knownWorker = workersByUserId[workerId]
-
-        let workerName: String = {
-            if !task.workerName.isBlank {
-                return task.workerName
-            }
-
-            if let knownWorker {
-                return knownWorker.userName
-            }
-
-            return serviceStop.tech
-        }()
-
-        let workerType: WorkerTypeEnum = {
-            if task.workerType != .notAssigned {
-                return task.workerType
-            }
-
-            if let knownWorker {
-                return knownWorker.workerType
-            }
-
-            return .notAssigned
-        }()
-
-        return PayrollWorkerSnapshot(
-            userId: workerId,
-            userName: workerName,
-            workerType: workerType
-        )
-    }
-
     func quantityAndUnit(
         for rateType: RateType,
-        serviceStop: ServiceStop,
-        task: ServiceStopTask?,
-        minutesOverride: Int?
+        serviceStop: ServiceStop
     ) -> (quantity: Double, unit: PayQuantityUnit) {
         switch rateType {
         case .flatPerStop, .flatPerTask, .manual:
             return (1, .each)
 
         case .hourly:
-            let minutes = minutesOverride ?? task?.actualTime ?? serviceStop.duration
-            return (Double(minutes), .minutes)
+            return (Double(serviceStop.duration), .minutes)
 
         case .perBodyOfWater:
             // First version.

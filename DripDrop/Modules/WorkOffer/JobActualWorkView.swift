@@ -31,7 +31,7 @@ struct JobActualWorkView: View {
     @State private var didRevealInitialSection = false
 
     private var plannedLaborCents: Int {
-        jobTasks.reduce(0) { $0 + $1.contractedRate }
+        job.laborCost
     }
 
     private var plannedMinutes: Int {

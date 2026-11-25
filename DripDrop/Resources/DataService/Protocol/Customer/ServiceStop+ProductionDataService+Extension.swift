@@ -38,10 +38,25 @@ extension ProductionDataService {
     //CREATE
     func uploadServiceStop(companyId:String,serviceStop : ServiceStop) async throws {
         print("[ServiceStopTypeDebug][uploadServiceStop] companyId=\(companyId) serviceStopId=\(serviceStop.id) typeId=\(serviceStop.typeId) type=\(serviceStop.type) typeImage=\(serviceStop.typeImage) jobId=\(serviceStop.jobId) recurringServiceStopId=\(serviceStop.recurringServiceStopId) techId=\(serviceStop.techId)")
-        try serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId).setData(from:serviceStop, merge: false)
+        let companyStop = serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId)
+        if serviceStop.plannedServiceStopId != nil {
+            try await companyStop.setData(Firestore.Encoder().encode(serviceStop))
+        } else {
+            try companyStop.setData(from: serviceStop, merge: false)
+        }
         let homeOwnerServiceStopId = companyId + "-" + serviceStop.id
         var homeOwnerServiceStop = serviceStop
         homeOwnerServiceStop.id = homeOwnerServiceStopId
+        if serviceStop.plannedServiceStopId != nil {
+            homeOwnerServiceStop.plannedServiceStopId = nil
+            homeOwnerServiceStop.payrollMode = nil
+            homeOwnerServiceStop.manualPayOverrideCents = nil
+            homeOwnerServiceStop.manualPayOverrideNotes = nil
+            homeOwnerServiceStop.payWorkTypeId = nil
+            homeOwnerServiceStop.payWorkTypeName = nil
+            homeOwnerServiceStop.payrollStackBehavior = nil
+            homeOwnerServiceStop.payQuantity = nil
+        }
         try homeownerServiceStopDocument(serviceStopId: homeOwnerServiceStop.id).setData(from:homeOwnerServiceStop, merge: false)
     }
     //READ
@@ -589,8 +604,14 @@ extension ProductionDataService {
 
         if let manualPayOverrideCents {
             updateData[ServiceStop.CodingKeys.manualPayOverrideCents.rawValue] = manualPayOverrideCents
+            if serviceStop.payrollMode != nil && serviceStop.payrollMode != "custom" {
+                updateData[ServiceStop.CodingKeys.payrollMode.rawValue] = "custom"
+            }
         } else {
             updateData[ServiceStop.CodingKeys.manualPayOverrideCents.rawValue] = FieldValue.delete()
+            if serviceStop.payrollMode == "custom" {
+                updateData[ServiceStop.CodingKeys.payrollMode.rawValue] = "automatic"
+            }
         }
 
         if let manualPayOverrideNotes {

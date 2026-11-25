@@ -7,10 +7,27 @@
 import SwiftUI
 
 extension TechnicianPayLineItem {
+    var isLegacyTaskEarning: Bool {
+        payrollSource != "workOfferIncentive" && (
+            source == .serviceStopTask || payrollSource == "jobTask" ||
+            [serviceStopTaskId, jobTaskId, sourceTaskId].contains { !($0 ?? "").isEmpty }
+        )
+    }
+
     var canClearZeroDollarTask: Bool {
-        source == .serviceStopTask && totalAmountCents == 0 && paidAt == nil &&
+        isLegacyTaskEarning && totalAmountCents == 0 && paidAt == nil &&
         payStatementId == nil && exportBatchId == nil &&
         [.pending, .calculated, .needsReview, .approved].contains(calculationStatus)
+    }
+
+    var canApproveEarning: Bool {
+        !isLegacyTaskEarning && [.pending, .calculated].contains(calculationStatus) &&
+        payStatementId == nil && exportBatchId == nil
+    }
+
+    var canMarkEarningPaid: Bool {
+        ![.paid, .voided, .needsReview].contains(calculationStatus) && !canClearZeroDollarTask &&
+        (!isLegacyTaskEarning || [.approved, .adjusted].contains(calculationStatus))
     }
 }
 
@@ -189,8 +206,9 @@ final class CompanyPayrollReviewQueueViewModel: ObservableObject {
             await clearZeroTasks([lineItem])
             return
         }
-        guard [.pending, .calculated].contains(lineItem.calculationStatus), lineItem.payStatementId == nil, lineItem.exportBatchId == nil else {
-            alertMessage = "Review missing payroll setup, or use Clear $0 for a task with no additional pay."
+        guard lineItem.canApproveEarning else {
+            alertMessage = lineItem.isLegacyTaskEarning ? "Task earnings were retired. Review this historical line before making an adjustment."
+                : "Review this line’s payroll setup before approving it."
             showAlert = true
             return
         }
@@ -203,8 +221,9 @@ final class CompanyPayrollReviewQueueViewModel: ObservableObject {
     }
 
     func markPaid(_ lineItem: TechnicianPayLineItem) async {
-        guard lineItem.calculationStatus != .needsReview && !lineItem.canClearZeroDollarTask else {
-            alertMessage = "Resolve missing payroll setup, or clear this $0 task instead of marking it paid."
+        guard lineItem.canMarkEarningPaid else {
+            alertMessage = lineItem.isLegacyTaskEarning ? "Review this historical task earning before recording payment."
+                : "Review this line’s payroll setup before recording payment."
             showAlert = true
             return
         }
@@ -242,8 +261,8 @@ final class CompanyPayrollReviewQueueViewModel: ObservableObject {
 
     func approveAllVisible() async {
         let visibleItems = filteredLineItems.filter {
-            [.pending, .calculated].contains($0.calculationStatus) &&
-            $0.payStatementId == nil && $0.exportBatchId == nil
+            $0.canApproveEarning ||
+            $0.canClearZeroDollarTask && [.pending, .calculated].contains($0.calculationStatus)
         }
 
         guard !visibleItems.isEmpty else {
@@ -555,15 +574,13 @@ struct PayrollLineItemReviewRow: View {
         }
         .padding(.vertical, 6)
         .swipeActions(edge: .trailing) {
-            if lineItem.calculationStatus != .paid &&
-                lineItem.calculationStatus != .voided &&
-                lineItem.calculationStatus != .needsReview && !lineItem.canClearZeroDollarTask {
+            if lineItem.canMarkEarningPaid {
                 Button("Paid") {
                     markPaidAction()
                 }
             }
 
-            if lineItem.canClearZeroDollarTask || [.pending, .calculated].contains(lineItem.calculationStatus) {
+            if lineItem.canClearZeroDollarTask || lineItem.canApproveEarning {
                 Button(lineItem.canClearZeroDollarTask ? "Clear $0" : "Approve") {
                     approveAction()
                 }

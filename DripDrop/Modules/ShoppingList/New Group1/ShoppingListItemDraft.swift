@@ -18,6 +18,8 @@ struct ShoppingListItemDraft: Hashable {
     var description: String = ""
     var quantity: String = "1"
     var selectedProduct: GenericItem = .emptyProductCatalogItem
+    var usesJobCatalogPricing = false
+    var jobSupplier: DataBaseItem?
 
     var selectedDataBaseItem: DataBaseItem = DataBaseItem(
         id: "",
@@ -56,6 +58,10 @@ struct ShoppingListItemDraft: Hashable {
 
     var selectedDataBaseItemId: String? {
         selectedDataBaseItem.id.isEmpty ? nil : selectedDataBaseItem.id
+    }
+
+    var jobVendorItemId: String? {
+        subCategory == .product ? jobSupplier?.id : selectedDataBaseItemId
     }
 
     var canSubmit: Bool {
@@ -129,10 +135,14 @@ struct ShoppingListItemDraft: Hashable {
         )
     }
     var quantityDouble: Double {
-        Double(quantity) ?? 0
+        guard let amount = Double(quantity), amount.isFinite, amount > 0 else { return 0 }
+        return amount
     }
 
     var plannedUnitCostCents: Int? {
+        if subCategory == .product, usesJobCatalogPricing, !selectedProduct.id.isEmpty {
+            return Int((jobSupplier?.rate ?? selectedProduct.defaultCostCents ?? selectedProduct.cost ?? selectedProduct.rate).rounded())
+        }
         if subCategory == .product,
            !selectedProduct.id.isEmpty,
            selectedProduct.rate > 0 {
@@ -148,6 +158,9 @@ struct ShoppingListItemDraft: Hashable {
     }
 
     var plannedUnitPriceCents: Int? {
+        if subCategory == .product, usesJobCatalogPricing, !selectedProduct.id.isEmpty {
+            return selectedProduct.billable == false ? 0 : Int(selectedProduct.sellPrice.rounded())
+        }
         if subCategory == .product,
            !selectedProduct.id.isEmpty,
            selectedProduct.productSellPriceCents > 0 {
@@ -172,7 +185,7 @@ struct ShoppingListItemDraft: Hashable {
             return nil
         }
 
-        return Int((Double(plannedUnitCostCents) * quantityDouble).rounded())
+        return Int(exactly: (Double(plannedUnitCostCents) * quantityDouble).rounded())
     }
 
     var plannedTotalPriceCents: Int? {
@@ -180,6 +193,6 @@ struct ShoppingListItemDraft: Hashable {
             return nil
         }
 
-        return Int((Double(plannedUnitPriceCents) * quantityDouble).rounded())
+        return Int(exactly: (Double(plannedUnitPriceCents) * quantityDouble).rounded())
     }
 }

@@ -26,6 +26,9 @@ struct AddJobPlannedServiceStopView: View {
     @State private var serviceStopTypeUseCase: ServiceStopTypeUseCase = .jobVisit
     @State private var estimatedMinutes: Int = 60
     @State private var plannedLaborCostCents: Int = 0
+    @State private var visitPriceCents: Int = 0
+    @State private var visitPayMode = "automatic"
+    @State private var fixedVisitPayCents = 0
     @State private var plannedLaborNotes: String = ""
     @State private var selectedTaskIds: Set<String> = []
 
@@ -174,11 +177,21 @@ struct AddJobPlannedServiceStopView: View {
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Planned Labor Cost")
+                Text("Company labor budget")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
 
                 MoneyTextField(cents: $plannedLaborCostCents)
+
+                Text("Customer visit price")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                MoneyTextField(cents: $visitPriceCents)
+                Text("Use $0 when the visit is included in a service price.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                PlannedVisitPayFields(mode: $visitPayMode, amountCents: $fixedVisitPayCents)
 
                 Text("Use this to estimate the cost of this expected visit before a real service stop is scheduled.")
                     .font(.caption2)
@@ -382,7 +395,10 @@ struct AddJobPlannedServiceStopView: View {
                 taskIds: Array(selectedTaskIds),
                 plannedLaborCostCents: plannedLaborCostCents,
                 plannedLaborNotes: plannedLaborNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : plannedLaborNotes,
-                createdByUserId: userId
+                createdByUserId: userId,
+                payrollMode: visitPayMode,
+                manualPayOverrideCents: visitPayMode == "custom" ? fixedVisitPayCents : nil,
+                billingLaborPriceCents: visitPriceCents
             )
 
             try await dataService.saveJobPlannedServiceStop(plannedStop)
@@ -401,5 +417,26 @@ private extension View {
         self
             .padding(16)
             .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+
+struct PlannedVisitPayFields: View {
+    @Binding var mode: String
+    @Binding var amountCents: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Picker("Technician visit pay", selection: $mode) {
+                Text("Assigned technician’s rate").tag("automatic")
+                Text("Fixed amount").tag("custom")
+                Text("Included in another payment").tag("included")
+                Text("No separate visit pay").tag("unpaid")
+            }
+            if mode == "custom" {
+                MoneyTextField(cents: $amountCents)
+                    .accessibilityLabel("Fixed visit pay amount")
+            }
+        }
     }
 }

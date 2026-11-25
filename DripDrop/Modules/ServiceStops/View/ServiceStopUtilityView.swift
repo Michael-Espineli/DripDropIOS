@@ -88,6 +88,10 @@ struct ServiceStopUtilityView<PhotoSection: View>: View {
         return continuationGate(for: serviceStop) != nil
     }
 
+    private var testerStripsEnabled: Bool {
+        masterDataManager.isFeatureEnabled(.testerStrips)
+    }
+
     private var selectedBodyOfWaterTitle: String {
         if VM.isLoadingInitialDetails && VM.selectedBOW == nil {
             return "Loading Water"
@@ -132,12 +136,12 @@ struct ServiceStopUtilityView<PhotoSection: View>: View {
                                         .opacity(isInputLocked ? 0.55 : 1)
 
                                     if serviceStop.includeReadings {
-                                        testerStripScanControl
-                                            .disabled(isInputLocked)
-                                            .opacity(isInputLocked ? 0.55 : 1)
-                                    }
+                                        if testerStripsEnabled {
+                                            testerStripScanControl
+                                                .disabled(isInputLocked)
+                                                .opacity(isInputLocked ? 0.55 : 1)
+                                        }
 
-                                    if serviceStop.includeReadings {
                                         readingInput(serviceStop)
                                             .disabled(isInputLocked)
                                             .opacity(isInputLocked ? 0.55 : 1)
@@ -207,7 +211,7 @@ struct ServiceStopUtilityView<PhotoSection: View>: View {
             }
         }
         .task(id: testerStripScanToken) {
-            guard testerStripScanToken != nil else { return }
+            guard testerStripsEnabled, testerStripScanToken != nil else { return }
             testerStripReviewScanId = nil
             await fillReadingsFromTesterStrip()
         }
@@ -373,7 +377,7 @@ extension ServiceStopUtilityView {
 
     @MainActor
     private func fillReadingsFromTesterStrip() async {
-        guard !isAnalyzingTesterStrip else { return }
+        guard testerStripsEnabled, !isAnalyzingTesterStrip else { return }
         guard let testerStripScanImage else { return }
         guard let companyId = masterDataManager.currentCompany?.id else {
             testerStripStatusMessage = "Select a company before reading the strip."
@@ -389,6 +393,7 @@ extension ServiceStopUtilityView {
         }
 
         isAnalyzingTesterStrip = true
+        defer { isAnalyzingTesterStrip = false }
         testerStripStatusMessage = "Saving strip photo..."
 
         do {
@@ -406,6 +411,7 @@ extension ServiceStopUtilityView {
                 print("Tester strip review image upload failed:", error)
             }
 
+            guard testerStripsEnabled else { return }
             testerStripStatusMessage = "Reading strip..."
             let readings = try await VM.analyzeTesterStripScan(
                 companyId: companyId,
@@ -415,6 +421,7 @@ extension ServiceStopUtilityView {
                 scanId: testerStripReview?.id ?? testerStripReviewScanId,
                 scanImageURL: testerStripReview?.image.imageURL
             )
+            guard testerStripsEnabled else { return }
             let filledCount = applyTesterStripReadings(readings, bodyOfWaterId: bodyOfWater.id)
             if readings.isEmpty {
                 testerStripStatusMessage = "No readings found on strip."
@@ -426,8 +433,6 @@ extension ServiceStopUtilityView {
         } catch {
             testerStripStatusMessage = testerStripErrorMessage(for: error)
         }
-
-        isAnalyzingTesterStrip = false
     }
 
     @MainActor

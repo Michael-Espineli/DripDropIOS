@@ -12,6 +12,7 @@ struct ReportListView: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
 
     @EnvironmentObject var dataService: ProductionDataService
+    @StateObject private var access = BooksViewModel()
     @State private var searchText: String = ""
 
     var body: some View {
@@ -22,13 +23,21 @@ struct ReportListView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     header
                     searchField
-                    list
+                    if let error = access.error { Text(error).foregroundStyle(.red) }
+                    else if !access.ready { ProgressView("Loading report access…") }
+                    else if !access.can("870") { Text("Report information permission (870) is required.").foregroundStyle(.secondary) }
+                    else { list }
                     Color.clear.frame(height: 90)
                 }
                 .padding(.horizontal, 14)
                 .padding(.top, 14)
             }
         }
+        .task(id: "\(masterDataManager.currentCompany?.id ?? ""):\(masterDataManager.user?.id ?? "")") {
+            guard let company = masterDataManager.currentCompany, let user = masterDataManager.user else { access.stop(); return }
+            access.start(companyId: company.id, userId: user.id, owner: company.ownerId == user.id)
+        }
+        .onDisappear { access.stop() }
         .navigationTitle("Reports")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -69,7 +78,7 @@ extension ReportListView {
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(.primary)
 
-                    Text("Operations and finance reporting.")
+                    Text("Operations, marketing, performance and finance reporting.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -79,14 +88,14 @@ extension ReportListView {
             }
 
             HStack(spacing: 8) {
-                Label("\(ReportType.allCases.count) Reports", systemImage: "square.grid.2x2.fill")
+                Label("\(permittedReports.count) Reports", systemImage: "square.grid.2x2.fill")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.poolBlue)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 7)
                     .background(Color.poolBlue.opacity(0.12), in: Capsule())
 
-                Label("3 Categories", systemImage: "folder.fill")
+                Label("4 Categories", systemImage: "folder.fill")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 10)
@@ -188,13 +197,15 @@ extension ReportListView {
         }
     }
 
+    var permittedReports: [ReportType] { access.can("870") ? ReportType.allCases.filter { !$0.requiresPayroll || access.can("420") } : [] }
+
     var filteredReports: [ReportType] {
         let term = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !term.isEmpty else {
-            return ReportType.allCases
+            return permittedReports
         }
 
-        return ReportType.allCases.filter { report in
+        return permittedReports.filter { report in
             [
                 report.title,
                 report.source,

@@ -386,9 +386,6 @@ struct CreateJobWorkOfferView: View {
         } catch { serverPayLines = []; payQuoteMessage = error.userFacingMessage }
     }
 
-    private var estimatedLaborCents: Int {
-        selectedTasks.reduce(0) { $0 + $1.contractedRate }
-    }
 
     private var defaultTitle: String {
         if title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -552,7 +549,7 @@ struct CreateJobWorkOfferView: View {
                         .foregroundStyle(.primary)
                         .lineLimit(1)
 
-                    Text("\(task.type.rawValue) • \(task.estimatedTime) min • \(money(task.contractedRate)) planned labor")
+                    Text("\(task.type.rawValue) • \(task.estimatedTime) min")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -789,7 +786,7 @@ struct CreateJobWorkOfferView: View {
     private var paySection: some View {
         Section {
             Picker("Pay Source", selection: $paySource) {
-                ForEach(WorkOfferPaySource.allCases) { source in
+                ForEach(WorkOfferPaySource.allCases.filter { $0 != .taskContractedRates }) { source in
                     Text(source.title).tag(source)
                 }
             }
@@ -799,7 +796,6 @@ struct CreateJobWorkOfferView: View {
             }
 
             WorkOfferSummaryRow(title: "Estimated Minutes", value: "\(estimatedMinutes)")
-            WorkOfferSummaryRow(title: "Planned Labor", value: money(estimatedLaborCents))
 
             if paySource == .offeredAmount {
                 WorkOfferSummaryRow(title: "Offered Amount", value: money(offeredAmountCents))
@@ -999,7 +995,7 @@ struct CreateJobWorkOfferView: View {
                 allowsTechnicianSelfScheduling: allowsTechnicianSelfScheduling,
                 paySource: paySource,
                 offeredAmountCents: paySource == .offeredAmount ? offeredAmountCents : 0,
-                estimatedLaborCents: estimatedLaborCents,
+                estimatedLaborCents: 0,
                 createdByUserId: currentUserId,
                 createdByUserName: currentUserName,
                 sentAt: offerType == .directUser ? Date() : nil,
@@ -1065,45 +1061,8 @@ struct CreateJobWorkOfferView: View {
                 )
             ]
 
-        case .taskContractedRates:
-            return selectedTasks
-                .filter { $0.contractedRate > 0 }
-                .map { task in
-                    WorkOfferPayEstimateLine(
-                        id: "offer_estimate_task_\(task.id)",
-                        sourceTaskId: task.id,
-                        source: .serviceStopTask,
-                        workTypeId: nil,
-                        workTypeName: task.type.rawValue,
-                        title: task.name,
-                        rateAmountCents: task.contractedRate,
-                        rateType: .flatPerTask,
-                        quantity: 1,
-                        quantityUnit: .each,
-                        totalAmountCents: task.contractedRate,
-                        calculationStatus: .calculated,
-                        notes: "\(task.type.rawValue) • \(task.estimatedTime) min • Task contracted rate"
-                    )
-                }
-
-        case .technicianRate:
-            return selectedTasks.map { task in
-                WorkOfferPayEstimateLine(
-                    id: "offer_estimate_task_preview_\(task.id)",
-                    sourceTaskId: task.id,
-                    source: .serviceStopTask,
-                    workTypeId: nil,
-                    workTypeName: task.type.rawValue,
-                    title: task.name,
-                    rateAmountCents: task.contractedRate,
-                    rateType: .flatPerTask,
-                    quantity: 1,
-                    quantityUnit: .each,
-                    totalAmountCents: task.contractedRate,
-                    calculationStatus: task.contractedRate > 0 ? .calculated : .needsReview,
-                    notes: "Temporary estimate from task contracted rate. Final pay should use technician rate preview when pay context is loaded."
-                )
-            }
+        case .taskContractedRates, .technicianRate:
+            return []
         }
     }
     private func money(_ cents: Int) -> String {

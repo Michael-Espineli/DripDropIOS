@@ -71,6 +71,7 @@ struct EmployeeDailyDashboard: View {
     @State private var routeCloseoutPromptedRouteId: String? = nil
     @State private var showPreviousRouteReview: Bool = false
     @State private var routePendingEnd: ActiveRoute? = nil
+    @State private var editingRouteMileage = false
     @State private var showCreateJobOptions: Bool = false
     @State private var showCreateBlankJob: Bool = false
     @State private var showCreateFromTemplate: Bool = false
@@ -204,6 +205,7 @@ struct EmployeeDailyDashboard: View {
         }
         .sheet(isPresented: $VM.showEndMilage, onDismiss: {
             routePendingEnd = nil
+            editingRouteMileage = false
         }) {
             routeEndMileageSheet
                 .presentationDetents([.fraction(0.45), .fraction(0.6), .large])
@@ -980,13 +982,10 @@ extension EmployeeDailyDashboard {
     }
 
     private func prepareToEndPreviousRoute(_ route: ActiveRoute) {
-        routePendingEnd = route
-        prepareEndMileageInput(for: route)
         showPreviousRouteReview = false
-
         Task { @MainActor in
             await Task.yield()
-            VM.showEndMilage = true
+            finishRoute(route)
         }
     }
 }
@@ -1034,6 +1033,14 @@ extension EmployeeDailyDashboard {
                         Divider().opacity(0.25)
                     }
                     routeCloseoutCard(activeRoute)
+                }
+
+                if activeRoute.status != .didNotStart {
+                    Button(activeRoute.startMilage == nil || activeRoute.endMilage == nil ? "Add Mileage" : "Edit Mileage") {
+                        openMileageEditor(activeRoute, editing: true)
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .disabled(VM.isChangingRouteState)
                 }
 
                 routeActionButtons
@@ -1188,7 +1195,7 @@ extension EmployeeDailyDashboard {
     }
 
     private func routeNeedsStartMileage(_ route: ActiveRoute) -> Bool {
-        !route.needsReopening && (route.status == .didNotStart || route.startMilage == nil)
+        !route.needsReopening && (route.status == .didNotStart || route.startMilage == nil && mileagePromptsShown)
     }
 
     private func routeStartMileageCard(_ route: ActiveRoute) -> some View {
@@ -1205,8 +1212,8 @@ extension EmployeeDailyDashboard {
                         .font(.subheadline.weight(.semibold))
 
                     Text(route.status == .didNotStart
-                         ? "Select a vehicle and enter starting mileage before beginning this route."
-                         : "This route is missing starting mileage. Add it before route closeout.")
+                         ? mileagePromptsShown ? "Enter starting mileage when you begin this route." : "Begin tracking this route."
+                         : "This route is missing starting mileage.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1216,8 +1223,12 @@ extension EmployeeDailyDashboard {
             }
 
             Button {
-                prepareStartMileageInput(for: route)
-                VM.showMilage = true
+                if route.status == .didNotStart && !mileagePromptsShown {
+                    startRouteWithoutMileage()
+                } else {
+                    prepareStartMileageInput(for: route)
+                    VM.showMilage = true
+                }
             } label: {
                 actionButton(
                     title: route.status == .didNotStart ? "Start Route" : "Enter Start Mileage",
@@ -1253,6 +1264,18 @@ extension EmployeeDailyDashboard {
                             routeStartMileageInputCard
                         }
 
+                        if VM.activeRoute?.status == .didNotStart {
+                            Button("Continue Without Mileage", action: startRouteWithoutMileage)
+                        }
+                        if (masterDataManager.companyUser?.workerType ?? VM.currentCompanyUser?.workerType) == .contractor && VM.routeMileagePromptsEnabled {
+                            Button("Don’t Ask Again") {
+                                Task {
+                                    if await VM.saveRouteMileagePrompts(false, userId: masterDataManager.user?.id) {
+                                        VM.showMilage = false
+                                    }
+                                }
+                            }
+                        }
                         Color.clear.frame(height: 24)
                     }
                     .padding(14)
@@ -1464,33 +1487,42 @@ extension EmployeeDailyDashboard {
 
 // MARK: - Route Closeout
 extension EmployeeDailyDashboard {
+    private var mileageRequired: Bool {
+        VM.requiresRouteMileage(for: masterDataManager.companyUser?.workerType)
+    }
+
+    private var mileagePromptsShown: Bool {
+        VM.shouldPromptForRouteMileage(for: masterDataManager.companyUser?.workerType)
+    }
+
+    private func startRouteWithoutMileage() {
+        VM.showMilage = false
+        VM.startActiveRoute(
+            companyId: masterDataManager.currentCompany?.id,
+            companyName: masterDataManager.currentCompany?.name,
+            user: masterDataManager.user,
+            showMileageSheet: false
+        )
+    }
+
     private func routeNeedsCloseout(_ route: ActiveRoute) -> Bool {
-        route.totalStops > 0 &&
-        route.finishedStops == route.totalStops &&
-        (route.endMilage == nil || route.endTime == nil)
+        route.totalStops > 0 && route.finishedStops == route.totalStops && route.endTime == nil
     }
 
     private func presentRouteCloseoutIfNeeded() {
-        guard !VM.isChangingRouteState else { return }
+        guard !VM.isChangingRouteState, mileagePromptsShown else { return }
         guard let route = VM.activeRoute, routeNeedsCloseout(route) else { return }
         guard routeCloseoutPromptedRouteId != route.id else { return }
 
-        routePendingEnd = nil
         routeCloseoutPromptedRouteId = route.id
-        prepareEndMileageInput(for: route)
-        VM.showEndMilage = true
+        openMileageEditor(route, editing: false)
     }
 
-    private func prepareEndMileageInput(for route: ActiveRoute) {
-        if let endMilage = route.endMilage {
-            VM.inputEndMilage = String(endMilage)
-        } else if let startMilage = route.startMilage {
-            VM.inputEndMilage = String(startMilage)
-        } else if VM.startMilage > 0 {
-            VM.inputEndMilage = String(VM.startMilage)
-        } else {
-            VM.inputEndMilage = ""
-        }
+    private func openMileageEditor(_ route: ActiveRoute, editing: Bool) {
+        routePendingEnd = route
+        editingRouteMileage = editing
+        VM.prepareRouteMileage(route)
+        VM.showEndMilage = true
     }
 
     private func routeCloseoutCard(_ route: ActiveRoute) -> some View {
@@ -1503,10 +1535,10 @@ extension EmployeeDailyDashboard {
                     .background(Color.orange.opacity(0.13), in: Circle())
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Finish Route Mileage")
+                    Text("Finish Route")
                         .font(.subheadline.weight(.semibold))
 
-                    Text("All stops are complete. Enter ending mileage to close this route.")
+                    Text("All stops are complete.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1516,13 +1548,11 @@ extension EmployeeDailyDashboard {
             }
 
             Button {
-                routePendingEnd = nil
-                prepareEndMileageInput(for: route)
-                VM.showEndMilage = true
+                finishRoute(route)
             } label: {
                 actionButton(
-                    title: "Enter End Mileage",
-                    systemImage: "gauge.with.dots.needle.bottom.50percent",
+                    title: "Finish Route",
+                    systemImage: "flag.checkered",
                     tint: .orange
                 )
             }
@@ -1541,8 +1571,8 @@ extension EmployeeDailyDashboard {
                     VStack(spacing: 14) {
                         VStack(alignment: .leading, spacing: 10) {
                             sectionHeader(
-                                title: routeEndMileageSheetTitle,
-                                subtitle: routeEndMileageSheetSubtitle,
+                                title: editingRouteMileage ? "Route Mileage" : "Finish Route",
+                                subtitle: mileageRequired && !editingRouteMileage ? "Enter both odometer readings." : "Enter the odometer readings you recorded.",
                                 systemImage: "flag.checkered"
                             )
                         }
@@ -1553,7 +1583,7 @@ extension EmployeeDailyDashboard {
                     .padding(14)
                 }
             }
-            .navigationTitle(routeEndMileageSheetTitle)
+            .navigationTitle(editingRouteMileage ? "Route Mileage" : "Finish Route")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1568,137 +1598,59 @@ extension EmployeeDailyDashboard {
 
     private var routeEndMileageInputCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("Route Start")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
-                Text(
-                    Measurement(
-                        value: displayedStartMileageForCloseout,
-                        unit: UnitLength.miles
-                    )
-                    .formatted(.measurement(width: .abbreviated, usage: .road).locale(locale))
-                )
-                .font(.subheadline.weight(.semibold))
+            if let route = routePendingEnd ?? VM.activeRoute {
+                RouteMileageEntryFields(
+                    start: $VM.inputStartMilage,
+                    end: $VM.inputEndMilage,
+                    includeEnd: !editingRouteMileage || route.endTime != nil,
+                    required: mileageRequired && !editingRouteMileage,
+                    isSaving: VM.isChangingRouteState,
+                    submitTitle: editingRouteMileage ? "Save Mileage" : "Finish Route"
+                ) {
+                    saveMileage(route, finish: !editingRouteMileage)
+                }
+                if !editingRouteMileage && !mileageRequired {
+                    Button("Continue Without Mileage") {
+                        saveMileage(route, finish: true, includeReadings: false)
+                    }
+                    .disabled(VM.isChangingRouteState)
+                    if (masterDataManager.companyUser?.workerType ?? VM.currentCompanyUser?.workerType) == .contractor && VM.routeMileagePromptsEnabled {
+                        Button("Don’t Ask Again") {
+                            Task {
+                                if await VM.saveRouteMileagePrompts(false, userId: masterDataManager.user?.id) {
+                                    VM.showEndMilage = false
+                                }
+                            }
+                        }
+                    }
+                }
             }
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("End Mileage")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                MilesField(text: $VM.inputEndMilage)
-            }
-            .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-            if let routeEndMileageWarningText {
-                Text(routeEndMileageWarningText)
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-                    .padding(10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-
-            Button {
-                submitActiveRouteEndMileage()
-            } label: {
-                Label(routeEndMileageSubmitTitle, systemImage: "checkmark.circle")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-            .buttonStyle(.plain)
-            .disabled(!canSubmitActiveRouteEndMileage)
-            .opacity(canSubmitActiveRouteEndMileage ? 1.0 : 0.55)
         }
         .employeeDashCard()
     }
 
-    private var routeBeingEnded: ActiveRoute? {
-        routePendingEnd ?? VM.activeRoute
-    }
-
-    private var isEditingFinishedRouteEndMileage: Bool {
-        guard let route = routeBeingEnded else { return false }
-        return route.status == .finished && route.endTime != nil && route.endMilage != nil
-    }
-
-    private var routeEndMileageSheetTitle: String {
-        isEditingFinishedRouteEndMileage ? "Edit End Mileage" : "End Mileage"
-    }
-
-    private var routeEndMileageSheetSubtitle: String {
-        isEditingFinishedRouteEndMileage
-        ? "Correct the ending mileage for this finished route."
-        : "Enter the ending mileage to finish the route."
-    }
-
-    private var routeEndMileageSubmitTitle: String {
-        isEditingFinishedRouteEndMileage ? "Save End Mileage" : "Submit End Mileage"
-    }
-
-    private var displayedStartMileageForCloseout: Double {
-        routeBeingEnded?.startMilage ?? VM.startMilage
-    }
-
-    private var parsedActiveRouteEndMileage: Double? {
-        Double(VM.inputEndMilage.trimmingCharacters(in: .whitespacesAndNewlines))
-    }
-
-    private var canSubmitActiveRouteEndMileage: Bool {
-        guard let endMileage = parsedActiveRouteEndMileage else { return false }
-
-        if displayedStartMileageForCloseout > 0 {
-            return endMileage >= displayedStartMileageForCloseout
+    private func finishRoute(_ route: ActiveRoute) {
+        if mileagePromptsShown {
+            openMileageEditor(route, editing: route.endTime != nil)
+        } else {
+            saveMileage(route, finish: true, includeReadings: false)
         }
-
-        return endMileage >= 0
     }
 
-    private var routeEndMileageWarningText: String? {
-        guard let endMileage = parsedActiveRouteEndMileage else {
-            return "Enter a valid ending mileage."
-        }
-
-        if displayedStartMileageForCloseout > 0,
-           endMileage < displayedStartMileageForCloseout {
-            return "Ending mileage cannot be less than starting mileage."
-        }
-
-        return nil
-    }
-
-    private func submitActiveRouteEndMileage() {
-        guard canSubmitActiveRouteEndMileage else { return }
-        guard let route = routeBeingEnded else { return }
-        let isCurrentRoute = route.id == VM.activeRoute?.id
-        let shouldStopRoute = route.status != .finished || route.endTime == nil
-
-        if shouldStopRoute {
-            VM.finishRouteWithEndMileage(
+    private func saveMileage(_ route: ActiveRoute, finish: Bool, includeReadings: Bool = true) {
+        Task {
+            if await VM.saveRouteMileage(
                 companyId: masterDataManager.currentCompany?.id,
                 companyName: masterDataManager.currentCompany?.name,
                 user: masterDataManager.user,
-                route: route
-            )
-        } else {
-            VM.updateRouteEndtMilage(
-                companyId: masterDataManager.currentCompany?.id,
                 route: route,
-                syncSelectedVehicle: isCurrentRoute
-            )
+                finish: finish,
+                includeReadings: includeReadings
+            ) {
+                VM.showEndMilage = false
+                loadPreviousRouteReview()
+            }
         }
-
-        VM.showEndMilage = false
-        routePendingEnd = nil
-        routeCloseoutPromptedRouteId = nil
-        loadPreviousRouteReview()
     }
 }
 
@@ -2163,7 +2115,7 @@ extension EmployeeDailyDashboard {
                 }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Edit end mileage")
+            .accessibilityLabel("Edit mileage")
         } else {
             metricRow(
                 title: "Mileage",
@@ -2175,13 +2127,11 @@ extension EmployeeDailyDashboard {
     }
 
     private func canEditEndMileage(for route: ActiveRoute) -> Bool {
-        route.status == .finished && route.endMilage != nil
+        route.endTime != nil
     }
 
     private func beginEditingEndMileage(for route: ActiveRoute) {
-        routePendingEnd = route
-        prepareEndMileageInput(for: route)
-        VM.showEndMilage = true
+        openMileageEditor(route, editing: true)
     }
 
     private func mileageRangeText(start: Double, end: Double?) -> String {

@@ -306,6 +306,7 @@ final class ScheduleServiceStopViewModel: ObservableObject {
             }
 
             self.isLoading = true
+            defer { self.isLoading = false }
 
             var durationMin = 0
 
@@ -336,7 +337,7 @@ final class ScheduleServiceStopViewModel: ObservableObject {
             print("serviceStopId: \(serviceStopId)")
             print("internalId: \(internalId)")
 
-            let serviceStop = ServiceStop(
+            var serviceStop = ServiceStop(
                 id: serviceStopId,
                 internalId: "SS" + String(serviceStopCount),
                 companyId: companyId,
@@ -368,6 +369,8 @@ final class ScheduleServiceStopViewModel: ObservableObject {
                 manualPayOverrideCents: manualPayOverrideCents,
                 manualPayOverrideNotes: manualPayOverrideNotes
             )
+
+            try selectedPlannedServiceStop?.applyPay(to: &serviceStop)
 
             print(serviceStop)
 
@@ -448,7 +451,6 @@ final class ScheduleServiceStopViewModel: ObservableObject {
 
             self.alertMessage = "Successfully Uploaded"
             self.showAlert = true
-            self.isLoading = false
         }
     }
 
@@ -620,7 +622,7 @@ final class ScheduleServiceStopViewModel: ObservableObject {
             name: task.name,
             type: task.type,
             status: .scheduled,
-            contractedRate: task.contractedRate,
+            contractedRate: 0,
             estimatedTime: task.estimatedTime,
             customerApproval: true,
             actualTime: 0,
@@ -645,14 +647,7 @@ final class ScheduleServiceStopViewModel: ObservableObject {
             equipmentId: task.equipmentId,
             serviceLocationId: serviceLocationId,
             bodyOfWaterId: task.bodyOfWaterId,
-            shoppingListItemId: task.dataBaseItemId,
-            payTypeId: task.payTypeId,
-            payTypeName: task.payTypeName,
-            payrollMode: task.payrollMode,
-            manualPayOverrideCents: task.manualPayOverrideCents,
-            manualPayOverrideNotes: task.manualPayOverrideNotes,
-            payrollStackBehavior: task.payrollStackBehavior,
-            payQuantity: task.payQuantity
+            shoppingListItemId: task.dataBaseItemId
         )
     }
 
@@ -679,6 +674,7 @@ final class ScheduleServiceStopViewModel: ObservableObject {
             }
 
             self.isLoading = true
+            defer { self.isLoading = false }
 
             var durationMin = 0
 
@@ -711,7 +707,7 @@ final class ScheduleServiceStopViewModel: ObservableObject {
 
             var tasks: [ServiceStopTask] = []
 
-            let serviceStop = ServiceStop(
+            var serviceStop = ServiceStop(
                 id: serviceStopId,
                 internalId: "SS" + String(serviceStopCount),
                 companyId: companyId,
@@ -744,6 +740,8 @@ final class ScheduleServiceStopViewModel: ObservableObject {
                 manualPayOverrideNotes: manualPayOverrideNotes
             )
 
+            try selectedPlannedServiceStop?.applyPay(to: &serviceStop)
+
             print(serviceStop)
             print("----  Service Stop uploaded  -----")
 
@@ -764,7 +762,6 @@ final class ScheduleServiceStopViewModel: ObservableObject {
 
             self.alertMessage = "Successfully Uploaded"
             self.showAlert = true
-            self.isLoading = false
 
             return (serviceStop, tasks)
         }
@@ -820,6 +817,7 @@ final class ScheduleServiceStopViewModel: ObservableObject {
             }
 
             self.isLoading = true
+            defer { self.isLoading = false }
 
             var durationSeconds = 0
 
@@ -853,7 +851,7 @@ final class ScheduleServiceStopViewModel: ObservableObject {
             print("serviceStopId: \(serviceStopId)")
             print("internalId: \(internalId)")
 
-            let serviceStop = ServiceStop(
+            var serviceStop = ServiceStop(
                 id: serviceStopId,
                 internalId: internalId,
                 companyId: companyId,
@@ -886,6 +884,8 @@ final class ScheduleServiceStopViewModel: ObservableObject {
                 manualPayOverrideCents: manualPayOverrideCents,
                 manualPayOverrideNotes: manualPayOverrideNotes
             )
+
+            try selectedPlannedServiceStop?.applyPay(to: &serviceStop)
 
             print(serviceStop)
 
@@ -994,7 +994,6 @@ final class ScheduleServiceStopViewModel: ObservableObject {
 
             self.alertMessage = "Successfully Uploaded"
             self.showAlert = true
-            self.isLoading = false
         }
     }
 }
@@ -1328,49 +1327,60 @@ extension ScheduleServiceStopView {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader("Payroll", systemImage: "dollarsign.circle")
 
-            VStack(alignment: .leading, spacing: 10) {
-                Toggle(isOn: $VM.manualPayOverrideEnabled.animation(.spring(response: 0.25, dampingFraction: 0.9))) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Manual pay amount")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
-
-                        Text("Set the service stop pay amount. Additional Task pay is calculated separately.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                if VM.manualPayOverrideEnabled {
-                    VStack(alignment: .leading, spacing: 8) {
-                        MoneyTextField(cents: $VM.manualPayOverrideCents)
-
-                        TextField("Optional payroll note", text: $VM.manualPayOverrideNotes, axis: .vertical)
-                            .font(.subheadline)
-                            .lineLimit(3, reservesSpace: true)
-                            .padding(12)
-                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-
-                        Text("This amount replaces automatic service stop pay. Additional Task pay is added separately.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-                }
-            }
-            .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-
-            if !VM.manualPayOverrideEnabled {
+            if let plannedStop = VM.selectedPlannedServiceStop {
                 detailDisplayRow(
-                    title: "Service stop pay",
-                    value: "Assigned technician’s rate",
+                    title: "Service stop pay from the plan",
+                    value: plannedStop.scheduledPayDescription,
                     systemImage: "checklist"
                 )
+            } else if let mode = editingServiceStop?.payrollMode, ["included", "unpaid"].contains(mode) {
+                detailDisplayRow(
+                    title: "Service stop pay",
+                    value: mode == "included" ? "Included in another payment" : "No separate service stop pay",
+                    systemImage: "checklist"
+                )
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    Toggle(isOn: $VM.manualPayOverrideEnabled.animation(.spring(response: 0.25, dampingFraction: 0.9))) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Fixed visit pay amount")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
+
+                            Text("Set a fixed pay amount for this service stop.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    if VM.manualPayOverrideEnabled {
+                        VStack(alignment: .leading, spacing: 8) {
+                            MoneyTextField(cents: $VM.manualPayOverrideCents)
+
+                            TextField("Optional payroll note", text: $VM.manualPayOverrideNotes, axis: .vertical)
+                                .font(.subheadline)
+                                .lineLimit(3, reservesSpace: true)
+                                .padding(12)
+                                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                            Text("This amount sets the pay for this service stop.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                }
+                .padding(12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                if !VM.manualPayOverrideEnabled {
+                    detailDisplayRow(
+                        title: "Service stop pay",
+                        value: "Assigned technician’s rate",
+                        systemImage: "checklist"
+                    )
+                }
             }
-            Text("Choose Additional Task pay on extra tasks. Task amounts do not need to add up to service stop pay.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
         .padding(16)
         .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))

@@ -43,6 +43,9 @@ struct JobTemplateDetailView: View {
                     case .overview:
                         overviewSection
                         
+                    case .services:
+                        servicesSection
+
                     case .plannedStops:
                         plannedStopsSection
                         
@@ -306,10 +309,6 @@ struct JobTemplateDetailView: View {
                 cents: VM.plannedStopLaborCents
             )
             JobTemplateDetailMoneyRow(
-                title: "Planned Task Labor",
-                cents: VM.plannedTaskLaborCents
-            )
-            JobTemplateDetailMoneyRow(
                 title: "Planned Material Cost",
                 cents: VM.plannedMaterialCostCents
             )
@@ -387,11 +386,40 @@ struct JobTemplateDetailView: View {
         .jobTemplateDetailCard()
     }
 // MARK: plannedStopsSection
+    private var servicesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            JobTemplateSectionHeader(title: "Services", systemImage: "list.bullet.rectangle")
+            if VM.services.isEmpty {
+                JobTemplateEmptyState(
+                    title: "No services",
+                    message: "Services added to this template on web appear here.",
+                    systemImage: "list.bullet.rectangle"
+                )
+            }
+            ForEach(VM.services) { service in
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(service.name ?? service.catalogItemName ?? "Service")
+                            .font(.subheadline.weight(.semibold))
+                        Text("\(service.linkedTaskIds.count) tasks · \(service.linkedStopIds.count) visits")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Text(JobTemplateDetailMoneyFormatter.money(service.priceCents))
+                        .font(.subheadline.weight(.semibold))
+                }
+                .padding(12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
+            }
+        }
+    }
+
     private var plannedStopsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 JobTemplateSectionHeader(
-                    title: "Planned Service Stops",
+                    title: "Planned Visits",
                     systemImage: "calendar.badge.clock"
                 )
 
@@ -407,7 +435,7 @@ struct JobTemplateDetailView: View {
 
             if VM.plannedStops.isEmpty {
                 JobTemplateEmptyState(
-                    title: "No planned stops",
+                    title: "No planned visits",
                     message: "Add expected visits like Install Visit, Startup, or Service Call.",
                     systemImage: "calendar.badge.plus"
                 )
@@ -518,7 +546,7 @@ struct JobTemplateDetailView: View {
             } label: {
                 JobTemplateActionRow(
                     title: "Add Material",
-                    subtitle: "Add a planned database or custom material.",
+                    subtitle: "Choose a catalog product or add a custom item.",
                     systemImage: "cart.badge.plus"
                 )
             }
@@ -541,6 +569,7 @@ final class JobTemplateDetailViewModel: ObservableObject {
 
     @Published var template: JobTemplate
 
+    @Published var services: [JobLaborLineItem] = []
     @Published var plannedStops: [JobTemplatePlannedServiceStop] = []
     @Published var tasks: [JobTemplateTask] = []
     @Published var shoppingItems: [JobTemplateShoppingItem] = []
@@ -555,9 +584,6 @@ final class JobTemplateDetailViewModel: ObservableObject {
     ) {
         self.template = template
         self.dataService = dataService
-    }
-    var plannedTaskLaborCents: Int {
-        tasks.reduce(0) { $0 + $1.contractedRate }
     }
     var plannedStopLaborCents: Int {
         plannedStops.reduce(0) { total, stop in
@@ -579,7 +605,7 @@ final class JobTemplateDetailViewModel: ObservableObject {
     var projectedProfitCents: Int {
         let laborCost = template.defaultLaborCostCents > 0
         ? template.defaultLaborCostCents
-        : plannedStopLaborCents + plannedTaskLaborCents
+        : plannedStopLaborCents
 
         return template.defaultRateCents - laborCost - plannedMaterialCostCents
     }
@@ -611,10 +637,16 @@ final class JobTemplateDetailViewModel: ObservableObject {
                 templateId: template.id
             )
 
+            async let servicesTask = dataService.fetchJobTemplateLaborLineItems(
+                companyId: template.companyId,
+                templateId: template.id
+            )
+
             template = try await templateTask
             plannedStops = try await plannedStopsTask
             tasks = try await tasksTask
             shoppingItems = try await shoppingItemsTask
+            services = try await servicesTask
         } catch {
             alertMessage = "Could not load template. \(error.userFacingMessage)"
             showAlert = true
@@ -894,9 +926,10 @@ struct EditJobTemplateSheet: View {
 
 enum JobTemplateDetailTab: String, CaseIterable, Identifiable {
     case overview = "Overview"
-    case plannedStops = "Stops"
+    case services = "Services"
     case tasks = "Tasks"
-    case materials = "Materials"
+    case plannedStops = "Planned Visits"
+    case materials = "Products"
 
     var id: String { rawValue }
 
@@ -904,6 +937,8 @@ enum JobTemplateDetailTab: String, CaseIterable, Identifiable {
         switch self {
         case .overview:
             return "square.grid.2x2"
+        case .services:
+            return "list.bullet.rectangle"
         case .plannedStops:
             return "calendar"
         case .tasks:
@@ -1049,11 +1084,6 @@ struct JobTemplateTaskRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                if task.contractedRate > 0 {
-                    Text("Planned labor: \(JobTemplateDetailMoneyFormatter.money(task.contractedRate))")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
             }
 
             Spacer()

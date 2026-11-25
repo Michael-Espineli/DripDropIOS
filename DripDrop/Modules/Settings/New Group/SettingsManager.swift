@@ -240,7 +240,6 @@ struct JobTemplateTask: Identifiable, Codable, Hashable {
     var type: JobTaskType
     var description: String
 
-    var contractedRate: Int
     var estimatedTime: Int
     var customerApproval: Bool
 
@@ -268,7 +267,6 @@ struct JobTemplateTask: Identifiable, Codable, Hashable {
         name: String,
         type: JobTaskType,
         description: String = "",
-        contractedRate: Int,
         estimatedTime: Int,
         customerApproval: Bool = false,
         equipmentId: String? = nil,
@@ -299,7 +297,6 @@ struct JobTemplateTask: Identifiable, Codable, Hashable {
         self.name = name
         self.type = type
         self.description = description
-        self.contractedRate = contractedRate
         self.estimatedTime = estimatedTime
         self.customerApproval = customerApproval
         self.equipmentId = equipmentId

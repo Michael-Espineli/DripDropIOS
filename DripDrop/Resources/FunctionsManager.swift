@@ -7,6 +7,7 @@
 //  Functions In FunctionsManager
 import Foundation
 import SwiftUI
+import UIKit
 import Combine
 import FirebaseAuth
 import FirebaseFunctions
@@ -237,7 +238,7 @@ final class FunctionsManager {
             "newDay": newDay.rawValue,
         ]
         
-        let data = try await technicianWorkflow("updateServiceStopDayPermanently", payload: payload)
+        let data = try await reviewedRecurringChange("updateServiceStopDayPermanently", payload: payload)
         guard data["status"] as? Int == 200, data["companyId"] as? String == companyId else {
             throw NSError(domain: "PermanentRouteMove", code: -1, userInfo: [NSLocalizedDescriptionKey: data["error"] as? String ?? "The permanent move was not confirmed."])
         }
@@ -425,29 +426,7 @@ final class FunctionsManager {
             payload["destinationRouteId"] = destinationRouteId
         }
 
-        print("  [FunctionsManager][updateRecurringServiceStop]recurringServiceStopData: ")
-        print(recurringServiceStopData)
-        print("")
-        let callable = functions.httpsCallable("updateRecurringServiceStop")
-        let result = try await callable.call(payload)
-        guard let json = result.data as? [String: Any] else {
-            print("      [FunctionsManager][updateRecurringServiceStop] Error: Unable to read JSON from function response.")
-            throw FireBaseRead.unableToRead
-        }
-
-        let status = json["status"] as? Int
-        let success = json["success"] as? Bool ?? true
-        guard success && (status == nil || status! < 400) else {
-            let message = json["error"] as? String ?? "Recurring service stop could not be updated."
-            print("      [FunctionsManager][updateRecurringServiceStop] Error: \(message)")
-            throw NSError(
-                domain: "UpdateRecurringServiceStop",
-                code: status ?? 500,
-                userInfo: [NSLocalizedDescriptionKey: message]
-            )
-        }
-
-        return json
+        return try await reviewedRecurringChange("updateRecurringServiceStop", payload: payload)
     }
 
     // MARK: updateRecurringServiceStopsRouteAssignment
@@ -478,26 +457,38 @@ final class FunctionsManager {
             payload["destinationRouteId"] = destinationRouteId
         }
 
-        let callable = functions.httpsCallable("updateRecurringServiceStopsRouteAssignment")
-        let result = try await callable.call(payload)
-        guard let json = result.data as? [String: Any] else {
-            print("      [FunctionsManager][updateRecurringServiceStopsRouteAssignment] Error: Unable to read JSON from function response.")
-            throw FireBaseRead.unableToRead
-        }
+        return try await reviewedRecurringChange("updateRecurringServiceStopsRouteAssignment", payload: payload)
+    }
 
-        let status = json["status"] as? Int
-        let success = json["success"] as? Bool ?? true
-        guard success && (status == nil || status! < 400) else {
-            let message = json["error"] as? String ?? "Recurring service stops could not be assigned."
-            print("      [FunctionsManager][updateRecurringServiceStopsRouteAssignment] Error: \(message)")
-            throw NSError(
-                domain: "UpdateRecurringServiceStopsRouteAssignment",
-                code: status ?? 500,
-                userInfo: [NSLocalizedDescriptionKey: message]
-            )
+    private func reviewedRecurringChange(_ name: String, payload: [String: Any]) async throws -> [String: Any] {
+        while true {
+            let preview = try await verifiedRecurringResponse(name, payload: payload.merging([
+                "currentWeekReview": ["action": "preview"]
+            ]) { _, review in review })
+            if preview["reviewRequired"] as? Bool == false {
+                return try await verifiedRecurringResponse(name, payload: payload)
+            }
+            do {
+                return try await CurrentWeekRouteSheet.present(response: preview, save: { review in
+                    try await self.verifiedRecurringResponse(name, payload: payload.merging([
+                        "currentWeekReview": review
+                    ]) { _, value in value })
+                })
+            } catch is CurrentWeekRouteSheet.RefreshReview {
+                continue
+            }
         }
+    }
 
-        return json
+    private func verifiedRecurringResponse(_ name: String, payload: [String: Any]) async throws -> [String: Any] {
+        let data = try await technicianWorkflow(name, payload: payload)
+        let status = data["status"] as? Int
+        guard data["success"] as? Bool != false, (status ?? 200) < 400 else {
+            throw NSError(domain: "RecurringRouteChange", code: status ?? -1, userInfo: [
+                NSLocalizedDescriptionKey: data["error"] as? String ?? "The schedule change was not confirmed."
+            ])
+        }
+        return data
     }
 
     // MARK: deleteRecurringServiceStop
@@ -568,5 +559,221 @@ func sendJobEstimate(companyId:String, jobId:String) async throws {
             sentCount: json["sentCount"] as? Int ?? 0,
             testMode: json["testMode"] as? Bool ?? false
         )
+    }
+}
+
+private struct CurrentWeekRouteSheet: View {
+    struct RefreshReview: Error {}
+
+    struct Technician: Identifiable {
+        let id: String
+        let name: String
+    }
+
+    struct Visit: Identifiable {
+        let id: String
+        let date: String
+        let technician: String
+        let status: String
+        let state: String
+
+        var explanation: String {
+            switch state {
+            case "started": return "Work has started. This visit will stay as scheduled."
+            case "coverage": return "Transfer the coverage or pay agreement separately."
+            case "previousMove": return "This visit will keep its separately reviewed assignment."
+            default: return "The recorded outcome will stay as shown."
+            }
+        }
+    }
+
+    struct Schedule: Identifiable {
+        let id: String
+        let property: String
+        let upcoming: String
+        let nextDates: [String]
+        let conflict: String
+        let visits: [Visit]
+    }
+
+    struct Choice: Equatable {
+        var action = ""
+        var date = ""
+        var technician = ""
+    }
+
+    let previewId: String
+    let week: String
+    let dates: [String]
+    let technicians: [Technician]
+    let schedules: [Schedule]
+    let save: ([String: Any]) async throws -> [String: Any]
+    let finish: (Result<[String: Any], Error>) -> Void
+
+    @State private var choices: [String: Choice] = [:]
+    @State private var lastSubmitted: [String: Choice] = [:]
+    @State private var requestId = UUID().uuidString
+    @State private var isSaving = false
+    @State private var errorMessage = ""
+    @State private var staleReview = false
+
+    private var openVisits: [Visit] {
+        schedules.flatMap(\.visits).filter { $0.state == "open" }
+    }
+
+    private var canSave: Bool {
+        !staleReview && schedules.allSatisfy { $0.conflict.isEmpty } && openVisits.allSatisfy { visit in
+            guard let choice = choices[visit.id] else { return false }
+            return choice.action == "keep" || (choice.action == "move" && dates.contains(choice.date) && !choice.technician.isEmpty)
+        }
+    }
+
+    private func binding(_ id: String, _ field: WritableKeyPath<Choice, String>) -> Binding<String> {
+        Binding(get: { (choices[id] ?? Choice())[keyPath: field] }, set: { value in
+            var choice = choices[id] ?? Choice()
+            choice[keyPath: field] = value
+            choices[id] = choice
+        })
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section { Text(week) }
+                ForEach(schedules) { schedule in
+                    Section(schedule.property) {
+                        Text(schedule.upcoming)
+                        if !schedule.nextDates.isEmpty {
+                            Text(schedule.nextDates.joined(separator: ", ")).font(.footnote)
+                        }
+                        if !schedule.conflict.isEmpty {
+                            Text(schedule.conflict).foregroundStyle(.red)
+                        } else if schedule.visits.isEmpty {
+                            Text("No visit is due this week.")
+                        }
+                        ForEach(schedule.visits) { visit in
+                            Text("\(visit.date) · \(visit.technician) · \(visit.status)")
+                            if visit.state == "open" {
+                                Picker("This visit", selection: binding(visit.id, \.action)) {
+                                    Text("Choose an option").tag("")
+                                    Text("Keep as scheduled").tag("keep")
+                                    Text("Move this week").tag("move")
+                                }
+                                if choices[visit.id]?.action == "move" {
+                                    Picker("Date", selection: binding(visit.id, \.date)) {
+                                        Text("Select a date").tag("")
+                                        ForEach(dates, id: \.self) { Text($0).tag($0) }
+                                    }
+                                    Picker("Technician", selection: binding(visit.id, \.technician)) {
+                                        Text("Select a technician").tag("")
+                                        ForEach(technicians) { Text($0.name).tag($0.id) }
+                                    }
+                                }
+                            } else {
+                                Text(visit.explanation).font(.footnote)
+                            }
+                        }
+                    }
+                }
+                if !errorMessage.isEmpty {
+                    Section {
+                        Text(errorMessage).foregroundStyle(.red)
+                        if staleReview {
+                            Button("Refresh review") { finish(.failure(RefreshReview())) }
+                        }
+                    }
+                }
+            }
+            .disabled(isSaving)
+            .navigationTitle("This week’s stops")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { finish(.failure(CancellationError())) }.disabled(isSaving)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(isSaving ? "Saving…" : "Save change") {
+                        Task { await submit() }
+                    }
+                    .disabled(!canSave || isSaving)
+                }
+            }
+        }
+    }
+
+    @MainActor private func submit() async {
+        guard canSave, !isSaving else { return }
+        isSaving = true
+        errorMessage = ""
+        if lastSubmitted != choices { requestId = UUID().uuidString }
+        lastSubmitted = choices
+        let selected: [[String: String]] = openVisits.compactMap { visit in
+            guard let choice = choices[visit.id] else { return nil }
+            if choice.action == "keep" { return ["stopId": visit.id, "action": "keep"] }
+            return ["stopId": visit.id, "action": "move", "dateKey": choice.date, "techId": choice.technician]
+        }
+        do {
+            let result = try await save(["action": "commit", "previewId": previewId, "requestId": requestId, "choices": selected])
+            finish(.success(result))
+        } catch {
+            errorMessage = error.userFacingMessage
+            staleReview = error.localizedDescription.localizedCaseInsensitiveContains("refresh the review")
+            isSaving = false
+        }
+    }
+
+    @MainActor static func present(
+        response: [String: Any],
+        save: @escaping ([String: Any]) async throws -> [String: Any]
+    ) async throws -> [String: Any] {
+        guard let id = response["previewId"] as? String, let today = response["today"] as? String,
+              let start = response["weekStart"] as? String, let end = response["weekEnd"] as? String,
+              let items = response["schedules"] as? [[String: Any]],
+              let staff = response["technicians"] as? [[String: String]] else {
+            throw FireBaseRead.unableToRead
+        }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
+        guard let firstDate = formatter.date(from: today) else { throw FireBaseRead.unableToRead }
+        let dates = (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: firstDate) }
+            .map { formatter.string(from: $0) }.filter { $0 <= end }
+        let technicians = staff.compactMap { entry -> Technician? in
+            guard let id = entry["id"], let name = entry["name"] else { return nil }
+            return Technician(id: id, name: name)
+        }
+        let schedules = try items.map { schedule -> Schedule in
+            guard let id = schedule["id"] as? String, let rows = schedule["visits"] as? [[String: String]] else {
+                throw FireBaseRead.unableToRead
+            }
+            let visits = try rows.map { row -> Visit in
+                guard let id = row["id"], let day = row["dateKey"], let state = row["state"] else { throw FireBaseRead.unableToRead }
+                return Visit(id: id, date: day, technician: row["technician"] ?? "", status: row["status"] ?? "", state: state)
+            }
+            let property = [schedule["customer"] as? String, schedule["location"] as? String]
+                .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+            let upcoming = [response["effectiveDate"] as? String, schedule["nextDay"] as? String, schedule["nextTech"] as? String]
+                .compactMap { $0 }.joined(separator: " · ")
+            return Schedule(id: id, property: property, upcoming: upcoming, nextDates: schedule["nextDates"] as? [String] ?? [],
+                            conflict: schedule["conflict"] as? String ?? "", visits: visits)
+        }
+        let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive && $0.windows.contains(where: \.isKeyWindow) }
+        guard var presenter = scene?.windows.first(where: \.isKeyWindow)?.rootViewController else {
+            throw NSError(domain: "RecurringRouteChange", code: -1, userInfo: [
+                NSLocalizedDescriptionKey: "The schedule review couldn’t open. Try again from the route screen."
+            ])
+        }
+        while let shown = presenter.presentedViewController { presenter = shown }
+        return try await withCheckedThrowingContinuation { continuation in
+            let sheet = CurrentWeekRouteSheet(previewId: id, week: "\(start) – \(end)", dates: dates,
+                                             technicians: technicians, schedules: schedules, save: save) { outcome in
+                presenter.dismiss(animated: true) { continuation.resume(with: outcome) }
+            }
+            let controller = UIHostingController(rootView: sheet)
+            controller.isModalInPresentation = true
+            presenter.present(controller, animated: true)
+        }
     }
 }

@@ -1343,7 +1343,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     //READ
     func getTaskGroupItemById(companyId:String, taskGroupId:String,taskItemId:String) async throws -> JobTaskGroupItem {
-        return JobTaskGroupItem(id: "", name: "", type: .basic, description: "", contractedRate: 0, estimatedTime: 0)
+        return JobTaskGroupItem(id: "", name: "", type: .basic, description: "", estimatedTime: 0)
 
     }
     func deleteTaskGroupItem(companyId:String,taskGroupId:String,taskId:String) async throws {

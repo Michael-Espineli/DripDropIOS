@@ -57,7 +57,6 @@ final class JobTemplateWorkflowService {
                 name: task.name,
                 type: task.type,
                 description: "",
-                contractedRate: task.contractedRate,
                 estimatedTime: task.estimatedTime,
                 customerApproval: task.customerApproval,
                 equipmentId: nil,
@@ -65,15 +64,7 @@ final class JobTemplateWorkflowService {
                 bodyOfWaterId: nil,
                 dataBaseItemId: task.dataBaseItemId.isEmpty ? nil : task.dataBaseItemId,
                 sortOrder: index,
-                billingLaborPriceCents: task.billingLaborPriceCents,
-                taxable: task.taxable,
-                payTypeId: task.payTypeId,
-                payTypeName: task.payTypeName,
-                payrollMode: task.payrollMode,
-                manualPayOverrideCents: task.manualPayOverrideCents,
-                manualPayOverrideNotes: task.manualPayOverrideNotes,
-                payrollStackBehavior: task.payrollStackBehavior,
-                payQuantity: task.payQuantity
+                taxable: task.taxable
             )
         }
 
@@ -131,7 +122,7 @@ final class JobTemplateWorkflowService {
             template.defaultRateCents = priced.reduce(0) { $0 + $1.priceCents } + materialPrice
             template.defaultLaborCostCents = priced.reduce(0) { $0 + ($1.internalCostCents ?? 0) }
         }
-        let templateLines = sourceLines.map { $0.remapped(companyId: companyId, taskIds: taskIdMap, stopIds: stopIdMap, templateId: template.id) }
+        let templateLines = sourceLines.filter { !$0.isLegacyTaskCharge }.map { $0.remapped(companyId: companyId, taskIds: taskIdMap, stopIds: stopIdMap, templateId: template.id) }
         try await dataService.saveJobTemplateBundle(template: template, tasks: templateTasks, stops: templatePlannedStops, items: templateShoppingItems, laborLines: templateLines)
 
         return template
@@ -242,7 +233,7 @@ final class JobTemplateWorkflowService {
 
         let sourceLines = try await dataService.fetchJobLaborLineItems(companyId: companyId, jobId: sourceJob.id)
         let stopIdMap = Dictionary(uniqueKeysWithValues: zip(plannedServiceStops.map(\.id), copiedPlannedStops.map(\.id)))
-        let copiedLines = sourceLines.map { $0.remapped(companyId: companyId, taskIds: taskIdMap, stopIds: stopIdMap, jobId: newJobId) }
+        let copiedLines = sourceLines.filter { !$0.isLegacyTaskCharge }.map { $0.remapped(companyId: companyId, taskIds: taskIdMap, stopIds: stopIdMap, jobId: newJobId) }
         let linkedMaterials = zip(shoppingItems, copiedShoppingItems).map { source, copy -> ShoppingListItem in
             var item = copy
             item.linkedTaskId = source.linkedTaskId.flatMap { taskIdMap[$0] }
@@ -332,10 +323,8 @@ final class JobTemplateWorkflowService {
                 id: "comp_job_task_" + UUID().uuidString,
                 name: templateTask.name,
                 type: templateTask.type,
-                contractedRate: templateTask.contractedRate,
+                contractedRate: 0,
                 estimatedTime: templateTask.estimatedTime,
-                payTypeId: templateTask.payTypeId,
-                payTypeName: templateTask.payTypeName,
                 status: .draft,
                 customerApproval: templateTask.customerApproval,
                 actualTime: 0,
@@ -348,13 +337,7 @@ final class JobTemplateWorkflowService {
                 serviceLocationId: serviceLocationId,
                 bodyOfWaterId: "",
                 dataBaseItemId: templateTask.dataBaseItemId ?? "",
-                billingLaborPriceCents: templateTask.billingLaborPriceCents,
-                taxable: templateTask.taxable,
-                payrollMode: templateTask.payrollMode,
-                manualPayOverrideCents: templateTask.manualPayOverrideCents,
-                manualPayOverrideNotes: templateTask.manualPayOverrideNotes,
-                payrollStackBehavior: templateTask.payrollStackBehavior,
-                payQuantity: templateTask.payQuantity
+                taxable: templateTask.taxable
             )
         }
 
@@ -385,7 +368,8 @@ final class JobTemplateWorkflowService {
                 manualPayOverrideNotes: templateStop.manualPayOverrideNotes,
                 payrollStackBehavior: templateStop.payrollStackBehavior,
                 payQuantity: templateStop.payQuantity,
-                billingLaborPriceCents: templateStop.billingLaborPriceCents
+                billingLaborPriceCents: templateStop.billingLaborPriceCents,
+                sourceTemplatePlannedStopId: templateStop.id
             )
         }
 
@@ -398,6 +382,7 @@ final class JobTemplateWorkflowService {
                 purchaserId: createdByUserId,
                 purchaserName: admin.userName,
                 genericItemId: templateItem.genericItemId ?? "",
+                productId: templateItem.genericItemId.flatMap { $0.isEmpty ? nil : $0 },
                 name: templateItem.name,
                 description: templateItem.description,
                 datePurchased: nil,
@@ -417,6 +402,7 @@ final class JobTemplateWorkflowService {
                 shoppingListActive: false,
                 actionDate: nil,
                 dbItemId: templateItem.dbItemId,
+                itemId: templateItem.dbItemId,
                 purchasedItem: nil,
                 invoiced: false,
                 plannedUnitCostCents: templateItem.plannedUnitCostCents,
@@ -427,7 +413,7 @@ final class JobTemplateWorkflowService {
         }
 
         let stopIdMap = Dictionary(uniqueKeysWithValues: zip(templatePlannedStops.map(\.id), copiedPlannedStops.map(\.id)))
-        let copiedLines = templateLines.map { $0.remapped(companyId: companyId, taskIds: taskIdMap, stopIds: stopIdMap, jobId: newJobId) }
+        let copiedLines = templateLines.filter { !$0.isLegacyTaskCharge }.map { $0.remapped(companyId: companyId, taskIds: taskIdMap, stopIds: stopIdMap, jobId: newJobId) }
         let linkedMaterials = zip(templateShoppingItems, copiedShoppingItems).map { source, copy -> ShoppingListItem in
             var item = copy
             item.linkedTaskId = source.linkedTaskId.flatMap { taskIdMap[$0] }
@@ -454,10 +440,8 @@ final class JobTemplateWorkflowService {
                 id: "comp_job_task_" + UUID().uuidString,
                 name: task.name,
                 type: task.type,
-                contractedRate: task.contractedRate,
+                contractedRate: 0,
                 estimatedTime: task.estimatedTime,
-                payTypeId: task.payTypeId,
-                payTypeName: task.payTypeName,
                 status: .draft,
                 customerApproval: task.customerApproval,
                 actualTime: 0,
@@ -470,13 +454,7 @@ final class JobTemplateWorkflowService {
                 serviceLocationId: serviceLocationId,
                 bodyOfWaterId: "",
                 dataBaseItemId: task.dataBaseItemId,
-                billingLaborPriceCents: task.billingLaborPriceCents,
-                taxable: task.taxable,
-                payrollMode: task.payrollMode,
-                manualPayOverrideCents: task.manualPayOverrideCents,
-                manualPayOverrideNotes: task.manualPayOverrideNotes,
-                payrollStackBehavior: task.payrollStackBehavior,
-                payQuantity: task.payQuantity
+                taxable: task.taxable
             )
         }
     }
@@ -569,6 +547,11 @@ struct JobLaborLineItem: Identifiable, Codable, Hashable {
     var generatedFromPlannedStopId: String? = nil
     var sortOrder: Int? = nil
 
+    var isLegacyTaskCharge: Bool {
+        !(generatedFromTaskId ?? "").isEmpty || id.hasPrefix("scope_task_")
+            || ["task", "jobtask", "servicestoptask"].contains((sourceType ?? "").lowercased())
+    }
+
     var linkedTaskIds: [String] {
         if let taskIds, !taskIds.isEmpty { return taskIds }
         if let laborLineTaskIds, !laborLineTaskIds.isEmpty { return laborLineTaskIds }
@@ -615,23 +598,19 @@ struct NewJobScope {
     var scheduledTasks: [String: [ServiceStopTask]] = [:]
 
     var completeLaborLines: [JobLaborLineItem] {
-        let explicit = laborLineItems.filter { $0.generatedFromTaskId == nil && $0.generatedFromPlannedStopId == nil }
-        let coveredStops = Set(explicit.flatMap { $0.linkedStopIds })
-        var coveredTasks = Set(explicit.flatMap { $0.linkedTaskIds })
-        for stop in plannedStops where coveredStops.contains(stop.id) { coveredTasks.formUnion(stop.taskIds) }
-        var lines = explicit
-        for task in tasks where !coveredTasks.contains(task.id) {
-            var line = JobLaborLineItem(id: "scope_task_" + task.id)
-            line.name = task.name
-            line.quantity = 1
-            line.totalPriceCents = task.billingLaborPriceCents ?? task.contractedRate
-            line.unitPriceCents = line.totalPriceCents
-            line.internalCostCents = task.contractedRate
-            line.taskIds = [task.id]
-            line.generatedFromTaskId = task.id
-            line.taxable = task.taxable ?? false
-            if line.priceCents != 0 || task.contractedRate != 0 { lines.append(line) }
+        let explicit = laborLineItems.filter { line in
+            !line.isLegacyTaskCharge &&
+            (line.generatedFromPlannedStopId ?? "").isEmpty
+        }.map { line -> JobLaborLineItem in
+            guard line.internalCostMode != "fixed",
+                  !line.linkedTaskIds.isEmpty || !line.linkedStopIds.isEmpty else { return line }
+            var visitBasedLine = line
+            visitBasedLine.internalCostCents = plannedStops.filter { line.linkedStopIds.contains($0.id) }
+                .reduce(0) { $0 + ($1.plannedLaborCostCents ?? 0) }
+            return visitBasedLine
         }
+        let coveredStops = Set(explicit.flatMap { $0.linkedStopIds })
+        var lines = explicit
         for stop in plannedStops where !coveredStops.contains(stop.id) {
             var line = JobLaborLineItem(id: "scope_visit_" + stop.id)
             line.name = stop.name
@@ -642,7 +621,7 @@ struct NewJobScope {
             line.plannedServiceStopIds = [stop.id]
             line.generatedFromPlannedStopId = stop.id
             line.taxable = false
-            if line.priceCents != 0 { lines.append(line) }
+            if line.priceCents != 0 || line.internalCostCents != 0 { lines.append(line) }
         }
         return lines
     }

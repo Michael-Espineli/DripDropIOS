@@ -118,7 +118,7 @@ final class CreateNewLaborContractViewModel:ObservableObject{
                 let laborContractTask = LaborContractTask(
                     name: task.name,
                     type: task.type,
-                    contractedRate: task.contractedRate,
+                    contractedRate: 0,
                     estimatedTime: task.estimatedTime,
                     status: .offered,
                     customerApproval: true,
@@ -152,16 +152,7 @@ final class CreateNewLaborContractViewModel:ObservableObject{
             self.isLoading = false
         }
     }
-    func calcualteRateAndTime(tasks:[JobTask]) {
-        var rate = 0
-        var time = 0
-        for task in tasks {
-            rate = task.contractedRate + rate
-            time = task.estimatedTime + time
-        }
-        self.rate = String(rate/100)
-        print("Estiamted Time \(time)")
-    }
+
 }
 struct CreateNewLaborContractView: View {
     init(
@@ -222,9 +213,7 @@ struct CreateNewLaborContractView: View {
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
         }
-        .onChange(of: VM.selectedJobTaskList, perform: { tasks in
-            VM.calcualteRateAndTime(tasks: tasks)
-        })
+
     }
 }
 

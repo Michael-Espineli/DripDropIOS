@@ -42,6 +42,7 @@ struct ServiceStopDetailView3: View {
 
     @State private var title: String = "Service Stop"
     @State private var selectedTab: OfficeServiceStopDetailTab = .overview
+    @State private var showJobMaterials = false
     @State private var showEditSheet: Bool = false
     @State private var isSaving: Bool = false
     @State private var isDeleting: Bool = false
@@ -321,7 +322,16 @@ extension ServiceStopDetailView3 {
     private func workContent(_ stop: ServiceStop) -> some View {
         VStack(spacing: 14) {
             taskSection(stop)
-            shoppingListSection
+            if stop.jobId.isEmpty {
+                shoppingListSection
+            } else {
+                sectionCard(title: "Job Materials", systemImage: "shippingbox") {
+                    Button("Review job materials") { showJobMaterials = true }
+                }
+                .sheet(isPresented: $showJobMaterials) {
+                    JobStopMaterialsSheet(dataService: dataService, stop: stop)
+                }
+            }
             observationsSection
         }
     }

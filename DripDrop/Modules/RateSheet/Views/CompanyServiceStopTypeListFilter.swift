@@ -311,7 +311,7 @@ final class CompanyServiceStopTypesViewModel: ObservableObject {
             if typesWithoutWorkTypes.isEmpty {
                 alertMessage = "Added \(newTypes.count) default pay types."
             } else {
-                alertMessage = "Added \(newTypes.count) default pay types. \(typesWithoutWorkTypes.count) type(s) have no task pay links yet."
+                alertMessage = "Added \(newTypes.count) default pay types. \(typesWithoutWorkTypes.count) type(s) have no fallback pay type links."
             }
 
             showAlert = true
@@ -327,7 +327,7 @@ final class CompanyServiceStopTypesViewModel: ObservableObject {
         }
 
         if names.isEmpty {
-            return "No task pay links"
+            return "No fallback links"
         }
 
         return names.joined(separator: " + ")
@@ -546,7 +546,7 @@ struct CompanyServiceStopTypesView: View {
         } header: {
             Text("Setup")
         } footer: {
-            Text("Pay types define base stop pay and can link to additional task pay types.")
+            Text("Pay types define service stop and hourly pay.")
         }
     }
 
@@ -760,7 +760,6 @@ struct CompanyServiceStopTypeEditorView: View {
         NavigationStack {
             Form {
                 basicSection
-                defaultWorkTypesSection
                 iconSection
                 advancedSection
                 helpSection
@@ -807,49 +806,6 @@ struct CompanyServiceStopTypeEditorView: View {
         }
     }
 
-    private var defaultWorkTypesSection: some View {
-        Section {
-            if workTypes.isEmpty {
-                Text("Create company pay types before assigning task pay links.")
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(workTypes) { workType in
-                    Button {
-                        toggleWorkType(workType.id)
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: workType.displayIconName)
-                                .frame(width: 28)
-
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(workType.name)
-                                    .foregroundStyle(.primary)
-
-                                Text("\(workType.category.title) • \(workType.defaultRateType.title)")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Spacer()
-
-                            if selectedWorkTypeIds.contains(workType.id) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.blue)
-                            } else {
-                                Image(systemName: "circle")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        } header: {
-            Text("Linked Task Pay Types")
-        } footer: {
-            Text("When this pay type is used, payroll can create additional task pay lines for these pay types.")
-        }
-    }
 
     private var iconSection: some View {
         Section {

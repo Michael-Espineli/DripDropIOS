@@ -46,11 +46,28 @@ struct GenericItem: Identifiable, Codable, Hashable {
     var vendorItemIds: [String]?
     var preferredVendorItemId: String?
     var source: String?
+    var defaultCostCents: Double?
+    var cost: Double?
+    var taxable: Bool?
+    var archived: Bool?
+    var mergedIntoProductId: String?
+    var availableForJobs: Bool?
+    var availableForJob: Bool?
+    var jobProductAvailable: Bool?
+    var availableForWorkOrders: Bool?
 
 
 }
 
 extension GenericItem {
+    var isAvailableForJobs: Bool {
+        guard active != false, archived != true, mergedIntoProductId?.isEmpty != false else { return false }
+        return availableForJobs ?? availableForJob ?? jobProductAvailable ?? availableForWorkOrders ?? true
+    }
+
+    var jobSupplierIDs: Set<String> {
+        Set(storeItemsIds + (vendorItemIds ?? []) + [preferredVendorItemId].compactMap { $0 })
+    }
     static var emptyProductCatalogItem: GenericItem {
         GenericItem(
             id: "",

@@ -189,7 +189,6 @@ final class JobDetailViewModel:ObservableObject{
                 print("[][load source repair request] Error \(error)")
             }
         }
-        var updatedLaborCost = 0
         var employeeMin = 0
             //Other Company Stuff
         if job.otherCompany {
@@ -252,24 +251,11 @@ final class JobDetailViewModel:ObservableObject{
             print("Task: \(task)") 
             self.serviceStopIds.append(task.serviceStopId.id)
             self.laborContractIds.append(task.laborContractId)
-            updatedLaborCost = updatedLaborCost + task.contractedRate
             employeeMin = employeeMin + task.estimatedTime
         }
         
         self.employeeHours = Double(employeeMin)/60
         self.employeeLaborCost = Double(employeeHours) * employeeHourlyRate
-        self.updatedLaborCost = Double(updatedLaborCost)
-        if job.laborCost != updatedLaborCost {
-            //Update Labor Cost
-            if job.otherCompany {
-                if let senderId = job.senderId {
-                    try await dataService.updateJobLaborCost(companyId: senderId, jobId: job.id, laborCost: String(updatedLaborCost))
-                }
-            } else {
-                try await dataService.updateJobLaborCost(companyId: companyId, jobId: job.id, laborCost: String(updatedLaborCost))
-            }
-        }
-        
         print("")
         try await loadServiceStopsForJob(companyId: companyId, job: job, jobTasks: jobTaskList)
         print("got Service Stops")
@@ -854,7 +840,7 @@ final class JobDetailViewModel:ObservableObject{
                     let jobTask = JobTask(
                         name: task.name,
                         type: task.type,
-                        contractedRate: task.contractedRate,
+                        contractedRate: 0,
                         estimatedTime: task.estimatedTime,
                         status: .draft,
                         customerApproval: false,
@@ -1819,13 +1805,9 @@ extension JobDetailViewModel {
     }
 
     var plannedLaborTotalCents: Int {
-        jobTaskList.reduce(0) { $0 + $1.contractedRate }
+        plannedServiceStopLaborCents
     }
     
-    var plannedTaskLaborCents: Int {
-        let covered = Set(plannedServiceStops.filter { ($0.plannedLaborCostCents ?? 0) > 0 }.flatMap(\.taskIds))
-        return jobTaskList.filter { !covered.contains($0.id) }.reduce(0) { $0 + $1.contractedRate }
-    }
     
     var plannedServiceStopLaborCents: Int {
         plannedServiceStops.reduce(0) { total, plannedStop in
@@ -1834,7 +1816,7 @@ extension JobDetailViewModel {
     }
 
     var plannedTotalLaborCents: Int {
-        plannedTaskLaborCents + plannedServiceStopLaborCents
+        plannedServiceStopLaborCents
     }
 
     func estimatedPlannedStopCostCents(_ stop: JobPlannedServiceStop) -> Int {
@@ -1860,19 +1842,22 @@ extension JobDetailViewModel {
 extension JobDetailViewModel {
 
     var plannedMaterialCostCents: Int {
-        shoppingItemList.reduce(0) { partial, item in
+        shoppingItemList.filter { $0.materialUsageOnly != true }.reduce(0) { partial, item in
             partial + (item.plannedTotalCostCents ?? 0)
         }
     }
 
     var plannedMaterialPriceCents: Int {
-        shoppingItemList.reduce(0) { partial, item in
+        shoppingItemList.filter { $0.materialUsageOnly != true }.reduce(0) { partial, item in
             partial + (item.plannedTotalPriceCents ?? 0)
         }
     }
 
     var actualPurchasedMaterialCostCents: Int {
-        Int(purchasedItems.reduce(0.0) { $0 + $1.totalAfterTax }.rounded())
+        purchasedItems.filter { $0.returned != true && $0.personalPurchase != true && $0.assignmentStatus != "personal" }
+            .reduce(0) { total, item in
+                total + (item.receiptLineTotalCents ?? Int(item.total.rounded()))
+            }
     }
 
     var purchasedItemsNotInvoiced: [PurchasedItem] {
@@ -1916,7 +1901,6 @@ extension JobDetailViewModel {
         let ready = openTasks.filter { !blocked.contains($0.id) }
         return JobDashboardSummary(
             jobRateCents: job.rate,
-            plannedTaskLaborCents: plannedTaskLaborCents,
             plannedServiceStopLaborCents: plannedServiceStopLaborCents,
             actualPayrollCents: actualPayrollTotalCents,
             plannedMaterialCostCents: plannedMaterialCostCents,

@@ -1095,16 +1095,30 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
     }
 
     func saveTechnicianRate(_ rate: TechnicianRate) async throws {
-        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .millisecondsSince1970
-        let encoded = try JSONSerialization.jsonObject(with: encoder.encode(rate)) as? [String: Any] ?? [:]
-        _ = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianRates", payload: ["companyId":rate.companyId,"requestId":UUID().uuidString,"rates":[encoded]])
+        try await saveTechnicianRateVersion(rate)
     }
 
     func saveTechnicianRateIncrease(expiredOldRate: TechnicianRate, newRate: TechnicianRate) async throws {
-        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .millisecondsSince1970
-        var encoded = try JSONSerialization.jsonObject(with: encoder.encode(newRate)) as? [String: Any] ?? [:]
-        encoded["existingId"] = expiredOldRate.id
-        _ = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianRates", payload: ["companyId":newRate.companyId,"requestId":UUID().uuidString,"rates":[encoded]])
+        try await saveTechnicianRateVersion(newRate, existingId: expiredOldRate.id)
+    }
+
+    private func saveTechnicianRateVersion(_ rate: TechnicianRate, existingId: String? = nil) async throws {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .millisecondsSince1970
+        var encoded = try JSONSerialization.jsonObject(with: encoder.encode(rate)) as? [String: Any] ?? [:]
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        encoded["effectiveStartDay"] = formatter.string(from: rate.effectiveStartDate)
+        encoded["existingId"] = existingId
+        _ = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianRates", payload: [
+            "companyId": rate.companyId,
+            "requestId": UUID().uuidString,
+            "timeZone": formatter.timeZone.identifier,
+            "rates": [encoded]
+        ])
     }
 
     private func payrollVisibleQuery(_ collection: CollectionReference, companyId: String) async throws -> Query {

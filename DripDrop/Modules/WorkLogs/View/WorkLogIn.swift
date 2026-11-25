@@ -16,6 +16,7 @@ final class WorkLogInViewModel: ObservableObject {
     @Published var workLogSheet: [WorkLog] = []
     @Published var currentLog: WorkLog?
     @Published var currentShiftId: String?
+    @Published var employeePayBasis: String?
     @Published var duration = 0
     @Published var totalShiftDuration = 0
     @Published var showDetails = false
@@ -26,6 +27,7 @@ final class WorkLogInViewModel: ObservableObject {
     private func load(company: Company, user: DBUser) async {
         do {
             let state = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianClock", payload: ["companyId":company.id,"action":"status"])
+            employeePayBasis = state["employeePayBasis"] as? String
             if let shiftId = state["shiftId"] as? String, !shiftId.isEmpty {
                 currentShiftId = shiftId
                 workLogSheet = try await dataService.getWorkLogByShift(companyId: company.id, shiftId: shiftId, userId: user.id)
@@ -109,6 +111,11 @@ extension WorkLogIn {
     var form: some View {
         VStack{
             if !VM.errorMessage.isEmpty { Text(VM.errorMessage).foregroundStyle(.red) }
+            if VM.employeePayBasis == "hourly" {
+                Text("Your clocked work time is used for hourly payroll.").font(.caption).foregroundStyle(.secondary)
+            } else if VM.employeePayBasis == "pieceRate" {
+                Text("Visits earn piece-rate pay. Clock your hours for the payroll record.").font(.caption).foregroundStyle(.secondary)
+            }
             Picker("Work allocation", selection: $VM.selectedOfferId) {
                 Text("General shift / route work").tag("")
                 ForEach(VM.availableOffers) { offer in Text(offer.title).tag(offer.id) }

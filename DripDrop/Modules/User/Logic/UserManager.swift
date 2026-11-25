@@ -14,6 +14,7 @@ import Darwin
 struct DBUserSettings: Codable, Hashable {
     var companyNavigationCategoryOrder: [String]?
     var companyNavigationBookmarks: [String]?
+    var promptForRouteMileage: Bool?
 }
 
  struct DBUser:Codable,Identifiable,Hashable{

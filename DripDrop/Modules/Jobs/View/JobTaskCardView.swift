@@ -314,11 +314,6 @@
 
         var metricsRow: some View {
             HStack(spacing: 10) {
-                metricPill(
-                    title: "Rate",
-                    value: "\(Double(jobTask.contractedRate) / 100)",
-                    systemImage: "dollarsign.circle"
-                )
 
                 metricPill(
                     title: "Time",

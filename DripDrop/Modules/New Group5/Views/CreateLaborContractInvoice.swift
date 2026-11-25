@@ -18,6 +18,7 @@ final class CreateLaborContractInvoiceViewModel:ObservableObject{
     @Published private(set) var jobIds: [IdInfo] = []
     
     @Published var showInvoiceInfo: Bool = false
+    @Published private(set) var invoiceError: String?
 
     @Published private(set) var isInvoiced: Bool = false
     @Published private(set) var invoiceRef: IdInfo? = nil
@@ -56,14 +57,21 @@ final class CreateLaborContractInvoiceViewModel:ObservableObject{
         }
     }
     func sendInvoice(companyId:String,laborContract:LaborContract) async throws {
-        // Create Invoice
-        let total = laborContract.rate
-        var lineItems:[StripeInvoiceLineItems] = []
-        for task in tasks {
-            //Update invoice
-            let lineItem = StripeInvoiceLineItems(id: UUID().uuidString, itemId: "1", description: task.name, induvidualCost: task.contractedRate, total: task.contractedRate)
-            lineItems.append(lineItem)
+        invoiceError = nil
+        let currentTasks = try await dataService.getLaborContractWork(companyId: companyId, laborContractId: laborContract.id)
+        guard !currentTasks.contains(where: { $0.contractedRate != 0 }) else {
+            invoiceError = "This contract includes legacy task charges. Create an invoice from revised service pricing."
+            return
         }
+        let total = laborContract.rate
+        guard total > 0 else {
+            invoiceError = "Add a service price before creating an invoice."
+            return
+        }
+        let lineItems = [
+            StripeInvoiceLineItems(id: UUID().uuidString, itemId: "1", description: "Contract service",
+                                   induvidualCost: total, total: total)
+        ]
         let invoiceCount = try await dataService.getInvoiceCount(companyId: companyId)
         let internalId = "I" + String(invoiceCount)
         let id = "inv_" + UUID().uuidString
@@ -169,7 +177,7 @@ extension CreateLaborContractInvoice {
             Text("Task Break Down")
             ForEach(VM.tasks){ task in
                 HStack{
-                    Text("\(task.name): \(task.contractedRate)")
+                    Text(task.name)
                     Spacer()
                     if task.status == .finished {
                         Image(systemName: "checkmark.circle.fill")
@@ -201,8 +209,12 @@ extension CreateLaborContractInvoice {
                         .modifier(SubmitButtonModifier())
                 })
                 .sheet(isPresented: $VM.showInvoiceInfo, content: {
-                    VStack{
-                        
+                    VStack {
+                        if let invoiceError = VM.invoiceError {
+                            Text(invoiceError)
+                                .font(.footnote)
+                                .foregroundStyle(.red)
+                        }
                         Picker("Type", selection: $VM.terms) {
                             ForEach(AcountingTermsTypes.allCases, id:\.self){ datum in
                                 Text(datum.rawValue).tag(datum)

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import FirebaseFunctions
 import FirebaseFirestore
 import FirebaseFirestoreSwift
 enum MobileHomeScreenCategories:String {
@@ -3263,6 +3264,14 @@ private struct MobilePurchaseReconciliationView: View {
         }
 
         do {
+            if let jobId = shoppingItem.jobId, !jobId.isEmpty {
+                _ = try await Functions.functions().httpsCallable("reconcileJobMaterialPurchase").call([
+                    "companyId": companyId, "shoppingItemId": shoppingItem.id, "purchasedItemId": purchase.id
+                ])
+                await loadData()
+                return
+            }
+
             try await purchaseRef.updateData(purchaseUpdates)
             try await shoppingRef.updateData(shoppingUpdates)
 

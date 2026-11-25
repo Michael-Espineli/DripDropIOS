@@ -20,8 +20,6 @@ final class AddRecurringServiceStopTaskViewModel: ObservableObject {
     @Published var itemName: String = ""
     @Published var itemType: JobTaskType = .basic
     @Published var itemDescription: String = ""
-    @Published var itemRate: String = "0"
-    @Published var taskPayDraft = TaskPayDraft()
     @Published var itemEstimatedTime: String = "0"
 
     @Published var showError: Bool = false
@@ -29,17 +27,9 @@ final class AddRecurringServiceStopTaskViewModel: ObservableObject {
 
     var canSubmit: Bool {
         !itemName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        Int(itemEstimatedTime) != nil &&
-        Double(itemRate) != nil
+        Int(itemEstimatedTime) != nil
     }
 
-    func validateRate() {
-        if itemRate.isEmpty { return }
-
-        if Double(itemRate) == nil {
-            itemRate = String(itemRate.dropLast())
-        }
-    }
 
     func validateEstimatedTime() {
         if itemEstimatedTime.isEmpty { return }
@@ -50,7 +40,6 @@ final class AddRecurringServiceStopTaskViewModel: ObservableObject {
     }
 
     func buildTaskItem() -> JobTaskGroupItem? {
-        if let message = taskPayDraft.validationMessage { errorMessage = message; showError = true; return nil }
         let trimmedName = itemName.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedDescription = itemDescription.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -66,26 +55,14 @@ final class AddRecurringServiceStopTaskViewModel: ObservableObject {
             return nil
         }
 
-        guard let rate = Double(itemRate) else {
-            errorMessage = "Rate must be a valid number."
-            showError = true
-            return nil
-        }
 
-        let contractedRate = Int((rate * 100).rounded())
 
         return JobTaskGroupItem(
             id: UUID().uuidString,
             name: trimmedName,
             type: itemType,
             description: trimmedDescription,
-            contractedRate: contractedRate,
-            estimatedTime: estimatedTime,
-            payTypeId: taskPayDraft.payTypeId.isEmpty ? nil : taskPayDraft.payTypeId,
-            payTypeName: taskPayDraft.payTypeName.isEmpty ? nil : taskPayDraft.payTypeName,
-            payrollMode: taskPayDraft.mode, manualPayOverrideCents: taskPayDraft.customAmountCents,
-            manualPayOverrideNotes: taskPayDraft.notes, payrollStackBehavior: taskPayDraft.stackBehavior,
-            payQuantity: taskPayDraft.quantity
+            estimatedTime: estimatedTime
         )
     }
 
@@ -93,8 +70,6 @@ final class AddRecurringServiceStopTaskViewModel: ObservableObject {
         itemName = ""
         itemType = .basic
         itemDescription = ""
-        itemRate = "0"
-        taskPayDraft = TaskPayDraft()
         itemEstimatedTime = "0"
         showError = false
         errorMessage = ""
@@ -109,20 +84,17 @@ struct AddRecurringServiceStopTask: View {
     @StateObject var VM: AddRecurringServiceStopTaskViewModel
     @Binding var tasks: [JobTaskGroupItem]
     let subtitle: String
-    let showsRateField: Bool
     let showsClearButton: Bool
 
     init(
         dataService: any ProductionDataServiceProtocol,
         tasks: Binding<[JobTaskGroupItem]>,
         subtitle: String = "Create a one-off task for this recurring service stop.",
-        showsRateField: Bool = true,
         showsClearButton: Bool = true
     ) {
         _VM = StateObject(wrappedValue: AddRecurringServiceStopTaskViewModel(dataService: dataService))
         self._tasks = tasks
         self.subtitle = subtitle
-        self.showsRateField = showsRateField
         self.showsClearButton = showsClearButton
     }
 
@@ -150,9 +122,6 @@ struct AddRecurringServiceStopTask: View {
                     .padding(.bottom, 12)
             }
             .padding(.top, 12)
-        }
-        .onChange(of: VM.itemRate) { _ in
-            VM.validateRate()
         }
         .onChange(of: VM.itemEstimatedTime) { _ in
             VM.validateEstimatedTime()
@@ -241,30 +210,8 @@ extension AddRecurringServiceStopTask {
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
 
-            if showsRateField {
-                TaskPayFields(draft: $VM.taskPayDraft, dataService: VM.dataService, companyId: masterDataManager.currentCompany?.id ?? "")
-            }
 
             HStack(spacing: 12) {
-                if showsRateField {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Label("Task cost budget", systemImage: "dollarsign.circle")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-
-                        HStack(spacing: 6) {
-                            Text("$")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.secondary)
-
-                            TextField("0", text: $VM.itemRate)
-                                .font(.subheadline)
-                                .keyboardType(.decimalPad)
-                        }
-                        .padding(12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    }
-                }
 
                 VStack(alignment: .leading, spacing: 8) {
                     Label("Est. Time", systemImage: "timer")

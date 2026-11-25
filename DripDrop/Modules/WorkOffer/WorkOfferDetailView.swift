@@ -49,9 +49,6 @@ struct WorkOfferDetailView: View {
         jobTasks.filter { offer.jobTaskIds.contains($0.id) }
     }
 
-    private var selectedTaskTotalCents: Int {
-        selectedTasks.reduce(0) { $0 + $1.contractedRate }
-    }
 
     private var selectedTaskMinutes: Int {
         selectedTasks.reduce(0) { $0 + $1.estimatedTime }
@@ -294,7 +291,6 @@ struct WorkOfferDetailView: View {
         TechnicianWorkPanel(title: "Pay Snapshot", systemImage: "dollarsign.circle") {
             WorkOfferDetailRow(title: "Pay Source", value: offer.paySource.title)
             WorkOfferDetailRow(title: "Estimated Labor", value: WorkOfferDetailMoneyFormatter.money(offer.estimatedLaborCents))
-            WorkOfferDetailRow(title: "Selected Task Labor", value: WorkOfferDetailMoneyFormatter.money(selectedTaskTotalCents))
             WorkOfferDetailRow(title: "Estimated Minutes", value: "\(offer.estimatedMinutes)")
 
             if offer.offeredAmountCents > 0 {
@@ -815,7 +811,7 @@ struct EditWorkOfferView: View {
     private var paySection: some View {
         TechnicianWorkPanel(title: "Pay & duration", systemImage: "dollarsign.circle") {
             Picker("Pay source", selection: $paySource) {
-                ForEach(WorkOfferPaySource.allCases) { Text($0.title).tag($0) }
+                ForEach(WorkOfferPaySource.allCases.filter { $0 != .taskContractedRates }) { Text($0.title).tag($0) }
             }
             if paySource == .offeredAmount { MoneyTextField(cents: $offeredAmountCents) }
             LabeledContent("Estimated minutes") {
@@ -902,8 +898,6 @@ struct WorkOfferTaskRow: View {
 
                 Spacer()
 
-                Text(WorkOfferDetailMoneyFormatter.money(task.contractedRate))
-                    .font(.subheadline.weight(.semibold))
             }
 
             HStack {

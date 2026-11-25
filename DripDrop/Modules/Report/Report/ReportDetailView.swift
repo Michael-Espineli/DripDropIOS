@@ -1,1099 +1,308 @@
-//
-//  ReportDetailView.swift
-//  ThePoolApp
-//
-//  Created by Michael Espineli on 1/17/24.
-//
-
 import SwiftUI
-enum oneReportType:String, CaseIterable {
-    case detail = "Detail"
-    case summary = "Summary"
-}
-enum induvidualReportDisplay:String, CaseIterable {
-    case customer = "Customer"
-    case company = "Company"
-    case user = "User"
-}
-struct ReportDetailView: View {
-    @EnvironmentObject var masterDataManager : MasterDataManager
-    @StateObject var reportVM : ReportViewModel
-    init(dataService: any ProductionDataServiceProtocol) {
-        _reportVM = StateObject(wrappedValue: ReportViewModel(dataService: dataService))
-    }
-    @State var startDate:Date = (Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date())
-    @State var endDate:Date = Date()
-    
-    @State var reportTypeList:[oneReportType] = [.detail,.summary]
-    @State var reportType:oneReportType = .summary
-    
-    @State var orderList:[induvidualReportDisplay] = [.customer,.company]
-    @State var order:induvidualReportDisplay = .customer
-    
-    @State var wasteTypeList:[induvidualReportDisplay] = [.user,.company]
-    @State var wasteType:induvidualReportDisplay = .user
-    
-    @State var pnlTypeList:[induvidualReportDisplay] = [.user,.company,.company]
-    @State var pnlType:induvidualReportDisplay = .customer
-    
-    @State var chemicalTypeList:[induvidualReportDisplay] = [.user,.company,.customer]
-    @State var chemicalType:induvidualReportDisplay = .user
-    
-    @State var purchaseTypeList:[induvidualReportDisplay] = [.user,.company,.customer]
-    @State var purchaseType:induvidualReportDisplay = .user
-    
-    @State var isLoading:Bool = false
+import Charts
 
-    private var selectedReport: ReportType {
-        masterDataManager.selectedReport ?? ReportType.allCases.first ?? .purchases
-    }
+// Retained for legacy ReportViewModel callers.
+enum oneReportType: String, CaseIterable { case detail = "Detail", summary = "Summary" }
+enum induvidualReportDisplay: String, CaseIterable { case customer = "Customer", company = "Company", user = "User" }
+
+struct ReportDetailView: View {
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+    @StateObject private var model = BooksViewModel()
+    @State private var controls = BooksControls()
+    @State private var showSaved = false
+    @State private var showSave = false
+    @State private var savedId: String?
+    @State private var savedTitle = ""
+    @State private var savedSubtitle = ""
+    @State private var expandedSections = Set<Int>()
+    @State private var copyPerformanceNotesToCustomers = false
+    @State private var pendingDelete: BooksSavedReport?
+    init(dataService: any ProductionDataServiceProtocol) {}
+
+    private var selectedReport: ReportType { masterDataManager.selectedReport ?? .readings }
+    private var regional: Bool { masterDataManager.featureFlagsLoaded && (masterDataManager.featureFlags["feature_flag_014"]?.enabled == true) }
+    private var sessionKey: String { "\(masterDataManager.currentCompany?.id ?? ""):\(masterDataManager.user?.id ?? ""):\(masterDataManager.currentCompany?.ownerId ?? "")" }
+    private var allowedReports: [ReportType] { ReportType.allCases.filter { !$0.requiresPayroll || model.can("420") } }
 
     var body: some View {
-        ZStack{
-            Color.listColor.ignoresSafeArea()
-            ScrollView{
-                LazyVStack(alignment: .center, pinnedViews: [.sectionHeaders], content: {
-                    Section(content: {
-                        VStack{
-                            switch selectedReport {
-                            case .chemicals:
-                                chemicalReport
-                            case .waste:
-                                wasteReport
-                            case .purchases:
-                                purchasesReport
-                            case .pnl:
-                                pnlReport
-                            case .funReadingsDosages,
-                                    .readings,
-                                    .readingHealth,
-                                    .readingPerformance,
-                                    .pnlPerPool,
-                                    .users,
-                                    .job,
-                                    .vehicle,
-                                    .payroll,
-                                    .futurePayroll,
-                                    .tax:
-                                unavailableReport(selectedReport)
-                            }
-                        }
-                        .padding(.horizontal,16)
-                    }, header: {
-                        if UIDevice.isIPhone{
-                            reportPicker
-                        }
-                    })
-                })
-                .padding(.top,20)
-                .clipped()
-            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                WorkspaceIdentityHeader(title: "Reports", eyebrow: "BOOKS", subtitle: "Operations, marketing, performance and finance reporting.")
+                if !model.ready {
+                    if let error = model.error { Text(error).foregroundStyle(.red) }
+                    else { ProgressView("Loading report access…") }
+                } else if !model.can("870") {
+                    Text("Report information permission (870) is required.").foregroundStyle(.secondary)
+                } else {
+                    reportControls
+                    if let error = model.error {
+                        Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.red).accessibilityLabel("Report error: \(error)")
+                    }
+                    if let notice = model.notice { Text(notice).foregroundStyle(.green) }
+                    if model.loading { ProgressView("Generating report…").frame(maxWidth: .infinity) }
+                    if let report = model.report { results(report) }
+                    else if !model.loading { Text("Choose the controls, then generate a report.").foregroundStyle(.secondary).padding(.vertical) }
+                }
+            }.padding(16)
         }
-        .onAppear(perform: {
-            if let report = masterDataManager.selectedReport {
-                print("Report Selected \(report.title)")
-            } else {
-                masterDataManager.selectedReport = ReportType.allCases.first
-            }
-        })
+        .background(Color.listColor)
         .navigationTitle(selectedReport.title)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar{
-            ToolbarItem{
-                Button(action: {
-                    Task{
-                        
-                        isLoading = true
-                        
-                        if let report = masterDataManager.selectedReport, let company = masterDataManager.currentCompany {
-                            switch  report {
-                            case .funReadingsDosages,
-                                    .readings,
-                                    .readingHealth,
-                                    .readingPerformance,
-                                    .pnlPerPool,
-                                    .users,
-                                    .job,
-                                    .vehicle,
-                                    .payroll,
-                                    .futurePayroll,
-                                    .tax:
-                                print("Mobile generation is not connected for \(report.title)")
-                            case .chemicals:
-                                do {
-                                    try await reportVM.getChemicalReport(companyId: company.id, type: reportType,order: chemicalType, startDate: startDate, endDate: endDate)
-                                } catch {
-                                    print("")
-                                    print(error)
-                                    print("Failed to Generate Chemical Report")
-                                    print("")
-                                }
-                            case .waste:
-                                do {
-                                    try await reportVM.getWasteReport(companyId: company.id, type: reportType, wasteType: wasteType, startDate: startDate, endDate: endDate)
-                                } catch {
-                                    print("")
-                                    print("error Creating Waste Report")
-                                    print(error)
-                                    print("")
-
-                                }
-                            case .purchases:
-                                try await reportVM.getPurchaseReport(companyId: company.id, type: reportType, orderString: purchaseType, startDate: startDate, endDate: endDate)
-                            case .pnl:
-                                do {
-                                    try await reportVM.getPNLReport(companyId: company.id, type: reportType, PNLType: pnlType, startDate: startDate, endDate: endDate)
-                                } catch {
-                                    print("")
-                                    print("Error Creating PNL Repprt")
-                                    print(error)
-                                    print("")
-
-                                }
-                            }
-                        }
-                        isLoading = false
-                        
-                    }
-                }, label: {
-                    if isLoading {
-                        ProgressView()
-                    } else {
-                        Label("Generate", systemImage: "play.fill")
-                    }
-                })
-                .foregroundColor(Color.poolGreen)
-                .disabled(isLoading || !selectedReport.isNativeGenerationReady)
+        .task(id: sessionKey) {
+            guard let company = masterDataManager.currentCompany, let user = masterDataManager.user else { model.stop(); return }
+            model.start(companyId: company.id, userId: user.id, owner: company.ownerId == user.id)
+        }
+        .task(id: model.accessRevision) {
+            await model.loadControls(type: selectedReport, regional: regional)
+            applyTemplateDefaults()
+        }
+        .onChange(of: selectedReport) { _, report in
+            if savedId == nil || controls.reportType != report.webKey {
+                controls.reportType = report.webKey; savedId = nil; savedTitle = ""
             }
-            ToolbarItem{
-                Button(action: {
-                    
-                }, label: {
-                    Label("Export", systemImage: "square.and.arrow.up")
-                })
-                .foregroundColor(Color.poolBlue)
-                .disabled(true)
-            }
+            model.invalidate()
+            Task { await model.loadControls(type: report, regional: regional); applyTemplateDefaults() }
+        }
+        .onChange(of: controls) { _, _ in model.invalidate(); expandedSections = [] }
+        .onChange(of: regional) { _, _ in model.invalidate(); Task { await model.loadControls(type: selectedReport, regional: regional) } }
+        .onChange(of: model.accessRevision) { _, _ in
+            controls.selectedCustomerTags = []; savedId = nil
+            if selectedReport.requiresPayroll && !model.can("420") { masterDataManager.selectedReport = .readings }
+        }
+        .onAppear { controls.reportType = selectedReport.webKey }
+        .onDisappear { model.stop() }
+        .sheet(isPresented: $showSaved) { savedSheet }
+        .sheet(isPresented: $showSave) { saveSheet }
+        .confirmationDialog("Delete this saved report?", isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }), titleVisibility: .visible) {
+            Button("Delete Saved Report", role: .destructive) { if let pendingDelete { Task { await model.delete(pendingDelete) } }; pendingDelete = nil }
+            Button("Cancel", role: .cancel) { pendingDelete = nil }
         }
     }
-}
 
-struct ReportDetailView_Previews: PreviewProvider {
-    static var previews: some View {
-        ReportDetailView(dataService: MockDataService())
-    }
-}
-
-extension ReportDetailView {
-    var reportPicker: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: selectedReport.systemImage)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(selectedReport.tint)
-                    .frame(width: 36, height: 36)
-                    .background(selectedReport.tint.opacity(0.14), in: Circle())
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(selectedReport.title)
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(.primary)
-
-                    Text(selectedReport.source)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+    private var reportControls: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Picker("Report", selection: Binding(get: { selectedReport }, set: { masterDataManager.selectedReport = $0 })) {
+                ForEach(allowedReports) { Text($0.title).tag($0) }
+            }.pickerStyle(.menu)
+            Text(selectedReport.source).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if !savedTitle.isEmpty { Label(savedTitle, systemImage: "bookmark.fill").font(.subheadline.bold()) }
+            Picker("Output", selection: $controls.mode) { Text("Summary").tag("summary"); Text("Detail").tag("detail") }.pickerStyle(.segmented)
+            if !selectedReport.hasFixedGrouping {
+                Picker("Group By", selection: $controls.groupBy) {
+                    Text("Company").tag("company"); Text("User").tag("user"); Text("Customer").tag("customer")
+                }.pickerStyle(.menu)
+            }
+            Picker("Date Range", selection: Binding(get: { controls.quickDateRange }, set: { key in
+                controls.quickDateRange = key; if key != "custom" { controls.dateRange = .preset(key) }
+            })) {
+                Text("Custom").tag("custom"); Text("This Month").tag("thisMonth"); Text("Last Month").tag("lastMonth")
+                Text("Last 7 Days").tag("last7Days"); Text("Last 30 Days").tag("last30Days")
+                Text("This Week").tag("thisWeek"); Text("Last Week").tag("lastWeek")
+            }
+            DatePicker("Start Date", selection: dateBinding(start: true), displayedComponents: .date)
+            DatePicker("End Date", selection: dateBinding(start: false), displayedComponents: .date)
+            if !model.customerTags.isEmpty {
+                Menu {
+                    Button("All permitted customers") { controls.selectedCustomerTags = [] }
+                    ForEach(model.customerTags, id: \.self) { tag in
+                        Button { if controls.selectedCustomerTags.contains(tag) { controls.selectedCustomerTags.removeAll { $0 == tag } }
+                            else { controls.selectedCustomerTags.append(tag) }
+                        } label: { Label(tag, systemImage: controls.selectedCustomerTags.contains(tag) ? "checkmark.circle.fill" : "circle") }
+                    }
+                } label: { Label(controls.selectedCustomerTags.isEmpty ? "Customer Tags: All permitted" : controls.selectedCustomerTags.joined(separator: ", "), systemImage: "tag") }
+            }
+            if selectedReport == .readingHealth { readingRule($controls.readingHealthFilters) }
+            if selectedReport == .readingPerformance {
+                Picker("Performance By", selection: $controls.readingPerformanceView) { Text("User").tag("users"); Text("Customer").tag("customers") }.pickerStyle(.segmented)
+                Text("Good standing standards").font(.headline)
+                ForEach($controls.readingPerformanceStandards) { $rule in
+                    VStack(alignment: .leading, spacing: 8) {
+                        readingRule($rule)
+                        Button("Remove Standard", role: .destructive) { controls.readingPerformanceStandards.removeAll { $0.id == rule.id } }
+                    }.padding(10).background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
                 }
-
+                Button("Add Standard", systemImage: "plus") {
+                    var rule = BooksReadingRule(); rule.templateId = model.templates.first?["id"] as? String ?? ""; controls.readingPerformanceStandards.append(rule)
+                }
+            }
+            Button { Task { await model.generate(controls: controls, regional: regional) } } label: {
+                Label(model.loading ? "Generating…" : "Generate Report", systemImage: "play.fill").frame(maxWidth: .infinity)
+            }.buttonStyle(WorkspaceOutlinedButtonStyle(tone: .emerald)).disabled(model.loading || !model.can("870") || !masterDataManager.featureFlagsLoaded)
+            HStack {
+                Button("Saved Reports", systemImage: "bookmark") { showSaved = true; Task { await model.loadSaved() } }
                 Spacer()
-
-                Text(selectedReport.generationStatusTitle)
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(Color.primary.opacity(0.06), in: Capsule())
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(ReportType.allCases) { report in
-                        reportPickerButton(report)
-                    }
-                }
-            }
-        }
-        .padding(12)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(Color.primary.opacity(0.07), lineWidth: 1)
-        }
-        .padding(.horizontal, 16)
+                if model.can(savedId == nil ? "872" : "874") { Button("Save Controls", systemImage: "square.and.arrow.down") { showSave = true } }
+            }.font(.subheadline)
+        }.padding(14).background(.background, in: RoundedRectangle(cornerRadius: 8))
     }
-
-    func reportPickerButton(_ report: ReportType) -> some View {
-        let isSelected = selectedReport == report
-
-        return Button(action: {
-            masterDataManager.selectedReport = report
-        }, label: {
-            HStack(spacing: 7) {
-                Image(systemName: report.systemImage)
-                    .font(.caption.weight(.semibold))
-
-                Text(report.title)
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(1)
-
-                if !report.isNativeGenerationReady {
-                    Text(report.generationStatusTitle)
-                        .font(.caption2.weight(.bold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(isSelected ? Color.white.opacity(0.16) : Color.primary.opacity(0.06), in: Capsule())
-                }
-            }
-            .foregroundStyle(isSelected ? Color.white : Color.primary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(
-                isSelected ? Color(.sRGB, red: 15/255, green: 23/255, blue: 42/255, opacity: 1) : Color(.systemBackground),
-                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(isSelected ? Color.clear : Color.primary.opacity(0.08), lineWidth: 1)
-            }
+    private func dateBinding(start: Bool) -> Binding<Date> {
+        Binding(get: { BooksDateRange.date(start ? controls.dateRange.start : controls.dateRange.end) }, set: { date in
+            controls.quickDateRange = "custom"
+            if start { controls.dateRange.start = BooksDateRange.string(date) } else { controls.dateRange.end = BooksDateRange.string(date) }
         })
-        .buttonStyle(.plain)
     }
-
-    func unavailableReport(_ report: ReportType) -> some View {
+    private func readingRule(_ rule: Binding<BooksReadingRule>) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Picker("Reading", selection: rule.templateId) {
+                Text("Select Reading").tag("")
+                ForEach(model.templates.indices, id: \.self) { index in
+                    let template = model.templates[index]
+                    Text([template["name"] as? String ?? template["chemType"] as? String ?? "Reading", template["UOM"] as? String ?? ""].filter { !$0.isEmpty }.joined(separator: " "))
+                        .tag(template["id"] as? String ?? "")
+                }
+            }
+            Picker("Comparison", selection: rule.operator) {
+                Text("Over").tag("gt"); Text("At or over").tag("gte"); Text("Below").tag("lt"); Text("At or below").tag("lte"); Text("Equal to").tag("eq")
+            }
+            TextField("Numeric threshold", text: rule.threshold).keyboardType(.numbersAndPunctuation).textFieldStyle(.roundedBorder)
+        }
+    }
+    private func applyTemplateDefaults() {
+        guard let template = model.templates.first else { return }
+        let id = template["id"] as? String ?? ""
+        if !model.templates.contains(where: { $0["id"] as? String == controls.readingHealthFilters.templateId }) {
+            var rule = BooksReadingRule(); rule.templateId = id
+            if let value = template["highWarning"] { rule.threshold = String(describing: value) }
+            else if let value = template["lowWarning"] { rule.operator = "lt"; rule.threshold = String(describing: value) }
+            controls.readingHealthFilters = rule
+        }
+        if controls.readingPerformanceStandards.isEmpty { controls.readingPerformanceStandards = [controls.readingHealthFilters] }
+    }
+    private func results(_ report: BooksReport) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: report.systemImage)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(report.tint)
-                    .frame(width: 46, height: 46)
-                    .background(report.tint.opacity(0.14), in: Circle())
-
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(report.title)
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.primary)
-
-                    Text(report.source)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+            Text(report.title).font(.title2.bold())
+            Text(report.description).font(.subheadline).foregroundStyle(.secondary)
+            ForEach(report.warnings, id: \.self) { warning in Label(warning, systemImage: "exclamationmark.triangle").font(.subheadline).foregroundStyle(.orange) }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 145))], alignment: .leading, spacing: 10) {
+                ForEach(Array(report.stats.enumerated()), id: \.offset) { _, metric in metricCard(metric) }
+                if let total = report.total { metricCard(total) }
+            }
+            HStack {
+                Menu("Export", systemImage: "square.and.arrow.up") {
+                    Button("CSV") { model.export("csv") }; Button("Excel") { model.export("xlsx") }; Button("PDF") { model.export("pdf") }
                 }
-
+                if let url = model.exportURL { ShareLink(item: url) { Label("Share File", systemImage: "square.and.arrow.up") } }
                 Spacer()
-            }
-
-            HStack(spacing: 8) {
-                Label(report.category.rawValue, systemImage: "folder.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(.thinMaterial, in: Capsule())
-
-                Label("Listed", systemImage: "checkmark.seal.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(report.tint)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(report.tint.opacity(0.12), in: Capsule())
-            }
-
-            Text("This report is now listed in the mobile library to match the web catalog. Mobile output is still being connected, so Generate is disabled for now.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(Color.primary.opacity(0.07), lineWidth: 1)
-        }
-        .padding(.top, 8)
-    }
-
-    var chemicalReport: some View {
-        VStack{
-            chemicalReportTitle
-            chemicalReportDetail
-        }
-        
-    }
-    var chemicalReportTitle: some View {
-        VStack {
-            Picker("Type", selection: $reportType, content: {
-                ForEach(reportTypeList,id:\.self){
-                    Text($0.rawValue).tag($0)
-                }
-            })
-            .pickerStyle(.segmented)
-            Picker("Order By", selection: $chemicalType, content: {
-                ForEach(chemicalTypeList,id:\.self){
-                    Text($0.rawValue).tag($0)
-                }
-            })
-            .pickerStyle(.segmented)
-            HStack{
-                Text("Start Date: ")
-                DatePicker(selection: $startDate, displayedComponents: .date) {
-                }
-            }
-            HStack{
-                Text("End Date: ")
-                
-                DatePicker(selection: $endDate, displayedComponents: .date) {
-                }
-            }
-            
-            
-        }
-    }
-    var chemicalReportDetail: some View {
-        VStack{
-            if masterDataManager.selectedReport != nil {
-                
-                ScrollView{
-                    VStack{
-                        Divider()
-                        VStack{
-                            if reportType == .detail{
-                                switch chemicalType {
-                                case .customer:
-                                    Group{
-                                        ForEach(Array(reportVM.customerDict.keys)){ key in
-                                            Text("Customer: \(key.firstName) \(key.lastName)")
-                                                .font(.headline)
-                                            if let stops = reportVM.customerDict[key] {
-                                                ScrollView(.horizontal) {
-                                                    ChemicalHeaderRow(readingTemplates: reportVM.listOfReadingTemplates, dosageTemplates: reportVM.listOfDosageTemplates)
-                                                    ForEach(stops){ data in
-                                                        ChemicalRow(stopData: data, readingTemplates: reportVM.listOfReadingTemplates, dosageTemplate: reportVM.listOfDosageTemplates)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                case .user:
-                                   Text("User")
-                                    Group{
-                                        if reportVM.userReportSummaryDictionary.count == 0 {
-                                            Text("No Results")
-                                        } else {
-                                            VStack{
-                                                ForEach(Array(reportVM.userReportSummaryDictionary.keys)){ key in
-                                                    Rectangle()
-                                                        .frame(height: 4)
-                                                    Text("User: \(key.userName)")
-                                                        .font(.headline)
-                                                    Rectangle()
-                                                        .frame(height: 1)
-                                                    VStack{
-                                                        if let templates = reportVM.userReportSummaryDictionary[key] {
-                                                            ForEach(Array(templates.keys)){ data in
-                                                                
-                                                                HStack{
-                                                                    Text("\(data.name ?? "NA") - ")
-                                                                    Spacer()
-                                                                    Text("\(String(templates[data] ?? 0)) \(data.UOM ?? "") ")
-                                                                    Spacer()
-                                                                    Text("\((templates[data] ?? 0) * (Double(data.rate ?? "0") ?? 1), format: .currency(code: "USD").precision(.fractionLength(0)))")
-                                                                    
-                                                                    Spacer()
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                    .padding(.leading,16)
-                                                }
-                                            }
-                                        }
-                                    }
-                                case .company:
-                                    Text("Company")
-                                    
-                                }
-                            } else { //Summary
-                                switch chemicalType {
-                                case .customer:
-                                    Group{
-                                        Text(String(reportVM.customerSummaryDosageDict.count))
-                                        if reportVM.customerSummaryDosageDict.count == 0 {
-                                            Text("NO Results")
-                                        } else {
-                                            VStack{
-                                                ForEach(Array(reportVM.customerSummaryDosageDict.keys)){ key in
-                                                    
-                                                    Text("Customer: \(key.firstName) \(key.lastName)")
-                                                        .font(.title)
-                                                    if let templates = reportVM.customerSummaryDosageDict[key] {
-                                                        ForEach(Array(templates.keys)){ data in
-                                                            
-                                                            HStack{
-                                                                Text("\(data.name ?? "NA") - \(String(templates[data] ?? 0))")
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                case .user:
-                                    Group{
-                                        if reportVM.userReportSummaryDictionary.count == 0 {
-                                            Text("No Results")
-                                        } else {
-                                            VStack{
-                                                ForEach(Array(reportVM.userReportSummaryDictionary.keys)){ key in
-                                                    Rectangle()
-                                                        .frame(height: 4)
-                                                    Text("User: \(key.userName)")
-                                                        .font(.headline)
-                                                    Rectangle()
-                                                        .frame(height: 1)
-                                                    VStack{
-                                                        if let templates = reportVM.userReportSummaryDictionary[key] {
-                                                            ForEach(Array(templates.keys)){ data in
-                                                                
-                                                                HStack{
-                                                                    Text("\(data.name ?? "NA") - ")
-                                                                    Spacer()
-                                                                    Text("\(String(templates[data] ?? 0)) \(data.UOM ?? "") ")
-                                                                    Spacer()
-                                                                    Text("\((templates[data] ?? 0) * (Double(data.rate ?? "0") ?? 1), format: .currency(code: "USD").precision(.fractionLength(0)))")
-                                                                    
-                                                                    Spacer()
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                    .padding(.leading,16)
-                                                }
-                                            }
-                                        }
-                                    }
-                                case .company:
-                                    Text("Company")
-                                }
+                Button(expandedSections.isEmpty ? "Expand All" : "Collapse All") { expandedSections = expandedSections.isEmpty ? Set(report.sections.indices) : [] }
+            }.font(.subheadline)
+            if !report.individualUsers.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Individual Users").font(.headline)
+                    if model.can("274") && masterDataManager.isFeatureEnabled(.managementTechnicianPerformanceHistory) {
+                        Toggle("Copy referenced customers to Customer Notes", isOn: $copyPerformanceNotesToCustomers).disabled(!model.can("12") || model.savingPerformanceNote)
+                    }
+                    ForEach(report.individualUsers) { user in
+                        HStack(alignment: .top) {
+                            Text(user.name).font(.subheadline.bold()); Spacer()
+                            Menu("Export") {
+                                Button("CSV") { model.export("csv", groupId: user.id) }
+                                Button("Excel") { model.export("xlsx", groupId: user.id) }
+                                Button("PDF") { model.export("pdf", groupId: user.id) }
                             }
+                            if model.can("274") && masterDataManager.isFeatureEnabled(.managementTechnicianPerformanceHistory) && !user.companyUserId.isEmpty {
+                                Button("Attach to History") {
+                                    Task { await model.createPerformanceNote(user: user, copyToCustomers: copyPerformanceNotesToCustomers && model.can("12"),
+                                        actorId: masterDataManager.user?.id ?? "", actorName: [masterDataManager.user?.firstName ?? "", masterDataManager.user?.lastName ?? ""].filter { !$0.isEmpty }.joined(separator: " ")) }
+                                }.disabled(model.savingPerformanceNote)
+                            }
+                        }.font(.subheadline)
+                    }
+                }.padding(12).background(.background, in: RoundedRectangle(cornerRadius: 8))
+            }
+            ForEach(Array(report.chartSections.enumerated()), id: \.offset) { _, section in
+                if !section.items.isEmpty {
+                    Text(section.title).font(.headline)
+                    ForEach(Array(section.items.enumerated()), id: \.offset) { _, item in
+                        if !item.chartPoints.isEmpty {
+                            VStack(alignment: .leading) {
+                                Text([item.name, item.unit ?? ""].joined(separator: " ")).font(.subheadline.bold())
+                                Chart(Array(item.chartPoints.enumerated()), id: \.offset) { _, point in
+                                    LineMark(x: .value("Date", BooksDateRange.date(String(point.date.prefix(10)))), y: .value("Average", point.average))
+                                }.frame(height: 180).accessibilityLabel("Daily average for \(item.name)")
+                            }.padding(12).background(.background, in: RoundedRectangle(cornerRadius: 8))
                         }
                     }
                 }
-            } else {
-                Spacer()
             }
-        }
-    }
-    var wasteReport: some View {
-        VStack{
-            wasteReportTitle
-            wasteReportDetail
-        }
-        
-    }
-    var wasteReportTitle: some View {
-        VStack{
-            Picker("Type", selection: $reportType, content: {
-                ForEach(reportTypeList,id:\.self){
-                    Text($0.rawValue).tag($0)
-                }
-            })
-            .pickerStyle(.segmented)
-            Picker("Type: ", selection: $wasteType, content: {
-                ForEach(wasteTypeList,id:\.self){
-                    Text($0.rawValue).tag($0)
-                }
-            })
-            .pickerStyle(.segmented)
-            HStack{
-                Text("Start Date: ")
-                DatePicker(selection: $startDate, displayedComponents: .date) {
-                }
-            }
-            HStack{
-                Text("End Date: ")
-                DatePicker(selection: $endDate, displayedComponents: .date) {
-                }
-            }
-            
-            
-        }
-    }
-    var wasteReportDetail: some View {
-        VStack{
-            if masterDataManager.selectedReport != nil {
-                VStack{
-                    Divider()
-                    if reportType == .detail{
-                        switch wasteType {
-                        case .user:
-                            Group{
-                                if reportVM.userReportSummaryDictionary.count == 0 {
-                                    Text("No Results")
-                                } else {
-                                    VStack{
-                                        ForEach(Array(reportVM.userReportSummaryDictionary.keys)){ key in
-                                            Rectangle()
-                                                .frame(height: 4)
-                                            Text("User: \(key.userName)")
-                                                .font(.headline)
-                                            Rectangle()
-                                                .frame(height: 1)
-                                            VStack{
-                                                if let templates = reportVM.userReportSummaryDictionary[key] {
-                                                    
-                                                    HStack{
-                                                        Spacer()
-                                                        HStack{
-                                                            Text("Used")
-                                                        }
-                                                        .frame(width: 100)
-                                                        HStack{
-                                                            Text("Purchased")
-                                                        }
-                                                        .frame(width: 100)
-                                                        HStack{
-                                                            Text("%")
-                                                        }
-                                                        .frame(width: 50)
-                                                    }
-                                                    Rectangle()
-                                                        .frame(height: 1)
-                                                    ForEach(Array(templates.keys)){ data in
-                                                        VStack{
-                                                            HStack{
-                                                                Text("\(data.name ?? "")")
-                                                                    .font(.headline)
-                                                                Text(" - \((templates[data] ?? 0) * (Double(data.rate ?? "0") ?? 1), format: .currency(code: "USD").precision(.fractionLength(0)))")
-                                                                Spacer()
-                                                            }
-                                                            HStack{
-                                                                Spacer()
-                                                                HStack{
-                                                                    if let amount = templates[data] {
-                                                                        Text("\(String(format:"%0.f",amount))")
-                                                                        Text("\(data.UOM ?? "")")
-                                                                            .font(.footnote)
-                                                                    }
-                                                                }
-                                                                .frame(width: 100)
-                                                                HStack{
-                                                                    Text("3")
-                                                                }
-                                                                .frame(width: 100)
-                                                                HStack{
-                                                                    Text("75%")
-                                                                }
-                                                                .frame(width: 50)
-                                                                
-                                                            }
-                                                            HStack{
-                                                                
-                                                                Spacer()
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            .padding(.leading,16)
-                                        }
-                                    }
-                                }
+            if report.sections.isEmpty { Text("No records match these dates and filters.").foregroundStyle(.secondary) }
+            ForEach(report.sections.indices, id: \.self) { index in
+                let section = report.sections[index]
+                DisclosureGroup(isExpanded: Binding(get: { expandedSections.contains(index) }, set: { if $0 { expandedSections.insert(index) } else { expandedSections.remove(index) } })) {
+                    if section.rows.isEmpty { Text("No rows in this group.").foregroundStyle(.secondary) }
+                    ForEach(section.rows.indices, id: \.self) { rowIndex in
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(section.columns.indices, id: \.self) { columnIndex in
+                                HStack(alignment: .top) {
+                                    Text(section.columns[columnIndex].label).foregroundStyle(.secondary)
+                                    Spacer(minLength: 12)
+                                    Text(section.rows[rowIndex].indices.contains(columnIndex) ? section.rows[rowIndex][columnIndex] : "").multilineTextAlignment(.trailing).textSelection(.enabled)
+                                }.font(.subheadline)
                             }
-                        case .company:
-                            Text("Company")
-                        default:
-                            Text("Invalid Query")
-                            
-                        }
-                    } else { //Sumary
-                        switch wasteType {
-                        case .user:
-                            if reportVM.wasteReportLoading {
-                                VStack{
-                                    Text("Loading... ")
-                                    ProgressView()
-                                    ProgressView("\(reportVM.wasteReportLoadingLabel)", value: Double(reportVM.wasteReportLoadingValue), total: Double(reportVM.wasteReportLoadingTotal))
-                                }
-                            } else {
-                                Group{
-                                    if reportVM.wasteReportItemDict.count == 0 {
-                                        Text("No Results")
-                                    } else {
-                                        VStack{
-                                            ForEach(Array(reportVM.wasteReportItemDict.keys)){ key in
-                                                Rectangle()
-                                                    .frame(height: 4)
-                                                Text("User: \(key.userName)")
-                                                    .font(.headline)
-                                                Rectangle()
-                                                    .frame(height: 1)
-                                                VStack{
-                                                    if let wasteReportItem = reportVM.wasteReportItemDict[key] {
-                                                        
-                                                        HStack{
-                                                            Spacer()
-                                                            HStack{
-                                                                Text("Used")
-                                                            }
-                                                            .frame(width: 100)
-                                                            HStack{
-                                                                Text("Purchased")
-                                                            }
-                                                            .frame(width: 100)
-                                                            HStack{
-                                                                Text("%")
-                                                            }
-                                                            .frame(width: 50)
-                                                        }
-                                                        Rectangle()
-                                                            .frame(height: 1)
-                                                        ForEach(Array(wasteReportItem)){ data in
-                                                            VStack{
-                                                                HStack{
-                                                                    Text("\(data.dosageTemplateName)")
-                                                                        .font(.headline)
-                                                                    Text(" - \(Double(data.amountUsed) * (Double(data.price)), format: .currency(code: "USD").precision(.fractionLength(0)))")
-                                                                    Spacer()
-                                                                }
-                                                                HStack{
-                                                                    Spacer()
-                                                                    HStack{
-                                                                        Text("\(String(data.amountUsed))")
-                                                                        Text("\(data.UOM)")
-                                                                            .font(.footnote)
-                                                                        
-                                                                    }
-                                                                    .frame(width: 100)
-                                                                    HStack{
-                                                                        Text("\(String(data.amountPurchased))")
-                                                                        Text("\(data.UOM)")
-                                                                            .font(.footnote)
-                                                                        
-                                                                    }
-                                                                    .frame(width: 100)
-                                                                    if data.amountPurchased != 0{
-                                                                        HStack{
-                                                                            Text("\(String(format:"%2.f",Double(((data.amountPurchased - data.amountUsed)/(data.amountPurchased))*100)))%")
-                                                                        }
-                                                                        .frame(width: 50)
-                                                                    } else {
-                                                                        HStack{
-                                                                            Text("NA")
-                                                                        }
-                                                                        .frame(width: 50)
-                                                                    }
-                                                                    
-                                                                }
-                                                                HStack{
-                                                                    
-                                                                    Spacer()
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                                .padding(.leading,16)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        case .company:
-                            Text("Company")
-                        default:
-                            Text("Invalid Order Selected")
-                        }
-                    }
-                }
-                
-            } else {
-                Spacer()
-            }
-        }
-    }
-    var usersReport: some View {
-        VStack{
-            userReportTitle
-            userReportDetail
-        }
-        
-    }
-    var userReportTitle: some View {
-        VStack{
-            Picker("Type", selection: $reportType, content: {
-                ForEach(reportTypeList,id:\.self){
-                    Text($0.rawValue).tag($0)
-                }
-            })
-            .pickerStyle(.segmented)
-            Picker("Order By", selection: $order, content: {
-                ForEach(orderList,id:\.self){
-                    Text($0.rawValue).tag($0)
-                }
-            })
-            .pickerStyle(.segmented)
-            
-            HStack{
-                Text("Start Date: ")
-                DatePicker(selection: $startDate, displayedComponents: .date) {
-                }
-            }
-            HStack{
-                Text("End Date: ")
-                
-                DatePicker(selection: $endDate, displayedComponents: .date) {
-                }
-            }
-            
-        }
-    }
-    var userReportDetail: some View {
-        VStack{
-            if let report = masterDataManager.selectedReport{
-                ScrollView{
-                    VStack{
-                        HStack{
-                            Text("\(report.title)")
-                        }
+                        }.padding(.vertical, 10)
                         Divider()
                     }
-                }
-            } else {
-                Spacer()
+                } label: { Text("\(section.title) (\(section.rows.count))").font(.headline) }
+                .padding(12).background(.background, in: RoundedRectangle(cornerRadius: 8))
             }
-            
         }
     }
-    var jobReport: some View {
-        VStack{
-            jobReportTitle
-            jobReportDetail
-        }
-        
+    private func metricCard(_ metric: BooksReport.Metric) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(metric.label).font(.caption).foregroundStyle(.secondary)
+            Text(metric.value).font(.headline).textSelection(.enabled)
+            if let subtitle = metric.subtitle { Text(subtitle).font(.caption).foregroundStyle(.secondary) }
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(12).background(.background, in: RoundedRectangle(cornerRadius: 8))
     }
-    var jobReportTitle: some View {
-        VStack{
-            Picker("Type", selection: $reportType, content: {
-                ForEach(reportTypeList,id:\.self){
-                    Text($0.rawValue).tag($0)
-                }
-            })
-            .pickerStyle(.segmented)
-            Picker("Order By", selection: $order, content: {
-                ForEach(orderList,id:\.self){
-                    Text($0.rawValue).tag($0)
-                }
-            })
-            .pickerStyle(.segmented)
-            HStack{
-                Text("Start Date: ")
-                DatePicker(selection: $startDate, displayedComponents: .date) {
-                }
-            }
-            HStack{
-                
-                Text("End Date: ")
-                
-                DatePicker(selection: $endDate, displayedComponents: .date) {
-                }
-            }
-            
-        }
-    }
-    var jobReportDetail: some View {
-        VStack{
-            if let report = masterDataManager.selectedReport{
-                
-                
-                ScrollView{
-                    VStack{
-                        HStack{
-                            Text("\(report.title)")
-                        }
-                        Divider()
+    private var savedSheet: some View {
+        NavigationStack {
+            List {
+                if let error = model.error { Text(error).foregroundStyle(.red) }
+                if model.saved.isEmpty { Text("No saved reports.").foregroundStyle(.secondary) }
+                ForEach(model.saved) { saved in
+                    Button { loadSaved(saved) } label: {
+                        VStack(alignment: .leading, spacing: 4) { Text(saved.title).font(.headline); Text(saved.subtitle).font(.caption).foregroundStyle(.secondary) }
+                    }.swipeActions {
+                        if model.can("876") { Button("Delete", role: .destructive) { pendingDelete = saved }.disabled(model.busySaving) }
                     }
                 }
-            } else {
-                Spacer()
-            }
+            }.navigationTitle("Saved Reports")
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { showSaved = false } } }
         }
     }
-    
-    var purchasesReport: some View {
-        VStack{
-            purchasesReportTitle
-            purchasesReportDetail
-        }
-        
-    }
-    var purchasesReportTitle: some View {
-        VStack(spacing: 16){
-            Picker("Type", selection: $reportType, content: {
-                ForEach(reportTypeList,id:\.self){
-                    Text($0.rawValue).tag($0)
-                }
-            })
-            .pickerStyle(.segmented)
-            
-            
-            Picker("Order By", selection: $purchaseType, content: {
-                ForEach(purchaseTypeList,id:\.self){
-                    Text($0.rawValue).tag($0)
-                }
-            })
-            .pickerStyle(.segmented)
-            
-            HStack{
-                Text("Start Date: ")
-                Spacer()
-                DatePicker(selection: $startDate, displayedComponents: .date) {
-                }
+    private func loadSaved(_ saved: BooksSavedReport) {
+        do {
+            var data = try JSONSerialization.jsonObject(with: JSONEncoder().encode(BooksControls())) as! [String: Any]
+            data.merge(saved.controls) { _, new in new }
+            if var rules = data["readingPerformanceStandards"] as? [[String: Any]] {
+                for index in rules.indices where rules[index]["id"] == nil { rules[index]["id"] = UUID().uuidString }
+                data["readingPerformanceStandards"] = rules
             }
-            HStack{
-                Text("End Date: ")
-                Spacer()
-                DatePicker(selection: $endDate, displayedComponents: .date) {
-                }
-            }
-        }
+            if var rule = data["readingHealthFilters"] as? [String: Any] { rule["id"] = rule["id"] ?? UUID().uuidString; data["readingHealthFilters"] = rule }
+            var decoded = try JSONDecoder().decode(BooksControls.self, from: JSONSerialization.data(withJSONObject: data))
+            guard let report = ReportType.allCases.first(where: { $0.webKey == decoded.reportType }), !report.requiresPayroll || model.can("420") else { return }
+            if decoded.quickDateRange != "custom" { decoded.dateRange = .preset(decoded.quickDateRange) }
+            controls = decoded; savedId = saved.id; savedTitle = saved.title; savedSubtitle = saved.subtitle
+            masterDataManager.selectedReport = report
+            showSaved = false
+        } catch { model.error = error.localizedDescription }
     }
-    var purchasesReportDetail: some View {
-        VStack{
-            if let report = masterDataManager.selectedReport{
-                HStack{
-                    Text("\(report.title)")
-                }
-                Divider()
-                switch reportType {
-                case .detail:
-                    switch purchaseType {
-                    case .company:
-                        ForEach(Array(reportVM.companyPurchaseDetail.keys)) { datum in
-                            VStack{
-                                HStack{
-                                    Text("\(datum.dataBaseItemName)")
-                                    Spacer()
-                                    if let value = reportVM.companyPurchaseDetail[datum] {
-                                        Text("Total: \(value, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                    }
-                                }
-                                Rectangle()
-                                    .frame(height: 1)
-                            }
-                            .padding(.leading,16)
-                        }
-                    case .customer:
-                        Text("Customer")
-                    case .user:
-                        ForEach(Array(reportVM.purchaseDetailReport.keys)){ reportUser in
-                            Rectangle()
-                                .frame(height: 4)
-                            HStack{
-                                Text("\(reportUser.userName)")
-                                    .font(.headline)
-                                Spacer()
-                                if let value = reportVM.purchaseDetailReport[reportUser]{
-                                    Text("Total: \(reportVM.getPurchase(array:value), format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                }
-                            }
-                            Rectangle()
-                                .frame(height: 1)
-                            if let value = reportVM.purchaseDetailReport[reportUser]{
-                                ForEach(Array(value.keys)) { key in
-                                    HStack{
-                                        Text("\(key.dataBaseItemName)")
-                                        if let amount = value[key] {
-                                            Spacer()
-                                            Text(String(format:"%2.f",amount))
-                                            Text(" X ")
-                                            Text("$ \(String(format:"%2.f",amount * key.price))")
-                                        }
-                                    }
-                                    Divider()
-                                }
-                            }
-                        }
-                        
-                    }
-                case .summary:
-                    switch purchaseType {
-                    case .company:
-                        Text("Company Summary")
-                        HStack{
-                            Spacer()
-                            if let value = reportVM.companyPurchaseSummary {
-                                Text("Total: \(value, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                            }
-                        }
-                        Rectangle()
-                            .frame(height: 4)
-                        ForEach(Array(reportVM.purchaseCompanySummaryCategoryReport.keys),id:\.self) { category in
-                            HStack{
-                                Text(category.rawValue)
-                                    .font(.headline)
-                                Spacer()
-                                Text("\(reportVM.purchaseCompanySummaryCategoryReport[category] ?? 0, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                            }
-                            Rectangle()
-                                .frame(height: 1)
-                        }
-                    case .customer:
-                        Text("Customer Summary")
-                    case .user:
-                        ForEach(Array(reportVM.purchaseSummaryReport.keys)){ reportUser in
-                            Rectangle()
-                                .frame(height: 4)
-                                .padding(.top,8)
-                            HStack{
-                                Text("\(reportUser.userName)")
-                                    .font(.headline)
-                                Spacer()
-                                if let value = reportVM.purchaseSummaryReport[reportUser]{
-                                    Text("Total: \(value, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                }
-                            }
-                            Rectangle()
-                                .frame(height: 1)
-                            if let array = reportVM.purchaseSummaryCategoryReport[reportUser] {
-                                ForEach(Array(array.keys),id:\.self){ category in
-                                    HStack{
-                                        Text(category.rawValue)
-                                            .font(.headline)
-                                        Spacer()
-                                        Text("\(array[category] ?? 0, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                    }
-                                    Divider()
-                                }
-                            }
-                        }
+    private var saveSheet: some View {
+        NavigationStack {
+            Form {
+                TextField("Report title", text: $savedTitle)
+                TextField("Description", text: $savedSubtitle, axis: .vertical)
+                Text("Saves the current controls. Relative date ranges update when opened.").font(.caption).foregroundStyle(.secondary)
+                if let error = model.error { Text(error).foregroundStyle(.red) }
+            }.navigationTitle(savedId == nil ? "Save Report" : "Update Saved Report")
+                .interactiveDismissDisabled(model.busySaving)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showSave = false }.disabled(model.busySaving) }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(model.busySaving ? "Saving…" : "Save") {
+                            Task { if await model.save(controls: controls, title: savedTitle, subtitle: savedSubtitle, existingId: savedId, userId: masterDataManager.user?.id ?? "") { savedId = model.lastSavedReportId; showSave = false } }
+                        }.disabled(model.busySaving || savedTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
-            } else {
-                Spacer()
-            }
-        }
-    }
-    var pnlReport: some View {
-        VStack{
-            pnlReportTitle
-            pnlReportDetail
-        }
-        
-    }
-    var pnlReportTitle: some View {
-        VStack{
-            Picker("Type", selection: $reportType, content: {
-                ForEach(reportTypeList,id:\.self){
-                    Text($0.rawValue).tag($0)
-                }
-            })
-            .pickerStyle(.segmented)
-            Picker("Order By", selection: $pnlType, content: {
-                ForEach(pnlTypeList,id:\.self){
-                    Text($0.rawValue).tag($0)
-                }
-            })
-            .pickerStyle(.segmented)
-            
-            
-            HStack{
-                Text("Start Date: ")
-                DatePicker(selection: $startDate, displayedComponents: .date) {
-                }
-            }
-            HStack{
-                
-                Text("End Date: ")
-                
-                DatePicker(selection: $endDate, displayedComponents: .date) {
-                }
-            }
-            
-        }
-    }
-    var pnlReportDetail: some View {
-        VStack{
-            if let report = masterDataManager.selectedReport{
-                ScrollView{
-                    VStack{
-                        HStack{
-                            Text("\(report.title)")
-                        }
-                        Divider()
-//                        Group{
-//                            if reportType == .detail{
-//                                switch pnlType {
-//                                    case .customer:
-//                                        Text("Customer")
-//                                    case .user:
-//                                        Text("User")
-//                                    case .company:
-//                                        Text("Company")
-//                                }
-//                            } else {
-//                                switch order {
-//                                case .customer:
-//                                    Group{
-//                                        Text(String(reportVM.pnlSummaryReport.count))
-//                                        if reportVM.pnlSummaryReport.count == 0 {
-//                                            Text("NO Results")
-//                                        } else {
-//                                            VStack{
-//                                                ForEach(Array(reportVM.pnlSummaryReport.keys)){ key in
-//                                                    
-//                                                    Text("Customer: \(key.firstName) \(key.lastName)")
-//                                                        .font(.title)
-//                                                    if let contracts = reportVM.pnlSummaryReport[key] {
-//                                                        ForEach(Array(contracts.keys)){ data in
-//                                                            HStack{
-//                                                                Text("\(data.customerName) - ")
-//                                                                Text("\((contracts[data] ?? 0), format: .currency(code: "USD").precision(.fractionLength(0)))")
-//                                                                    .foregroundColor((contracts[data] ?? 0) > 0 ? Color.green : Color.red)
-//                                                                Spacer()
-//                                                            }
-//                                                        }
-//                                                    }
-//                                                }
-//                                            }
-//                                        }
-//                                    }
-//                                case .user:
-//                                    Text("User")
-//                                case .company:
-//                                    Text("Company")
-//                                }
-//                            }
-//                        }
-                    }
-                }
-            } else {
-                Spacer()
-            }
-        }
-    }
-    var titleRow: some View {
-        HStack{
-            Text("00-00-0000")
-                .foregroundColor(Color.clear)
-                .overlay(Text("Date"))
-            HStack{
-                ForEach(reportVM.listOfDosageTemplates){ template in
-                    Text("\(template.chemType)")
-                        .frame(minWidth: 35)
-                }
-            }
-            Spacer()
         }
     }
 }

@@ -96,13 +96,34 @@ enum FieldValue { case remove; static func delete() -> FieldValue { .remove } }
         return result
     }
 }
+@MainActor final class FunctionsManager {
+    static let shared = FunctionsManager()
+    var writer: Writer?
+    var fail = false
+    func technicianWorkflow(_ name: String, payload: [String: Any]) async throws -> [String: Any] {
+        precondition(name == "updateRouteMileage")
+        if fail { throw Failure.denied }
+        guard let writer else { throw Failure.denied }
+        let route = try writer.ref.route()
+        var stored = [String: Any]()
+        if let start = payload["startMileage"] as? Double { stored["startMilage"] = start }
+        if let end = payload["endMileage"] as? Double {
+            stored["endMilage"] = end
+            if let start = (stored["startMilage"] as? Double) ?? route.startMilage { stored["distanceMiles"] = end - start }
+        }
+        if payload["action"] as? String == "finish" {
+            stored["status"] = "Finished"
+            stored["endTime"] = Date()
+        }
+        writer.ref.apply(stored)
+        var result = writer.ref.stored
+        if let endTime = result["endTime"] as? Double { result["endTime"] = endTime * 1000 }
+        return ["route": result]
+    }
+}
 @MainActor final class Writer {
     let db = Database(); let ref = Reference(); var requestedId = ""
     func ActiveRouteDocument(companyId: String, activeRouteId: String) -> Reference { requestedId = activeRouteId; return ref }
-    func updateActiveRouteStatus(companyId: String, activeRouteId: String, status: ActiveRouteStatus) { ref.apply(["status": status.rawValue]) }
-    func updateActiveRouteEndTime(companyId: String, activeRouteId: String, endTime: Date) { ref.apply(["endTime": endTime]) }
-    func updateActiveRouteEndMilage(companyId: String, activeRouteId: String, endMilage: Double) { ref.apply(["endMilage": endMilage]) }
-    func updateActiveRouteDistnace(companyId: String, activeRouteId: String, distance: Double) { ref.apply(["distanceMiles": distance]) }
 '''
 harness = r'''
 }
@@ -111,21 +132,27 @@ harness = r'''
     var activeRoute: ActiveRoute?; var isChangingRouteState = false
     var cachedCompanyId: String? = "company"; var cachedCompanyName: String?; var cachedUser: DBUser?
     var startTime = Date(); var startMilage = 0.0; var endMilage = 0.0
-    var inputEndMilage = ""; var showEndMilage = false; var showMilage = false
+    var inputStartMilage = ""; var inputEndMilage = ""; var showEndMilage = false; var showMilage = false
+    var recentActiveRoutes: [ActiveRoute] = []; var previousRoutesNeedingReview: [ActiveRoute] = []
     var alertMessage = ""; var showAlert = false
     var openedLogs = 0; var closedLogs = 0; var timers = 0; var stoppedTimers = 0
     func closeCurrentSummaryLog(companyId: String, activeRouteId: String) async { closedLogs += 1 }
     func openSummaryLog(type: WorkLogType, companyId: String, companyName: String, activeRouteId: String, user: DBUser) async { openedLogs += 1 }
     func startRouteLogTimer(companyId: String, activeRouteId: String, user: DBUser, companyName: String) { timers += 1 }
     func stopRouteLogTimer(companyId: String, activeRouteId: String, user: DBUser, companyName: String) { stoppedTimers += 1 }
-    func syncRouteVehicleMileage(companyId: String, route: ActiveRoute, miles: Double, syncSelectedVehicle: Bool) {}
 '''
 ui_harness = r'''
 }
 @MainActor final class Dashboard {
     let VM: Harness
     var routeCloseoutPromptedRouteId: String?; var routePendingEnd: ActiveRoute?
+    var mileagePromptsShown = true
     init(_ model: Harness) { VM = model }
+    func openMileageEditor(_ route: ActiveRoute, editing: Bool) {
+        routePendingEnd = route
+        VM.prepareRouteMileage(route)
+        VM.showEndMilage = true
+    }
 '''
 checks = r'''
 }
@@ -176,7 +203,13 @@ checks = r'''
         let retried = try await m.dataService.startOrResumeActiveRoute(companyId: "company", activeRouteId: "saved-route", startTime: Date())
         check(retried.startTime == start && retried.endTime == nil && retried.order == reopened.order, "Retrying an already reopened route preserves original information")
         m.inputEndMilage = "1065.5"
-        m.finishRouteWithEndMileage(companyId: "company", companyName: "Pool", user: DBUser()); await drain()
+        FunctionsManager.shared.writer = m.dataService
+        FunctionsManager.shared.fail = true
+        let failedFinish = await m.saveRouteMileage(companyId: "company", companyName: "Pool", user: DBUser(), route: reopened, finish: true)
+        check(!failedFinish && m.routeLocationManager.stops == 0 && m.activeRoute?.endTime == nil, "A failed finish keeps tracking and the route open")
+        FunctionsManager.shared.fail = false
+        let confirmedFinish = await m.saveRouteMileage(companyId: "company", companyName: "Pool", user: DBUser(), route: reopened, finish: true)
+        check(confirmedFinish, "A valid route closeout is confirmed before stopping tracking")
         let finished = try m.dataService.ref.route()
         check(finished.status == .finished && finished.endMilage == 1065.5 && finished.endTime != nil, "Finish the reopened route with fresh ending information")
         check(finished.startTime == start && finished.startMilage == 1000.5 && finished.distanceMiles == 65, "Second finish calculates total mileage from the original start")
@@ -254,6 +287,10 @@ checks = r'''
         pageUI.presentRouteCloseoutIfNeeded()
         check(!page.showEndMilage, "Explicit reopen suppresses the repeat automatic closeout prompt")
         check(!pageUI.routeNeedsStartMileage(reopened), "Reopened routes with saved mileage need no start sheet")
+        var noMileageCloseout = reopened
+        noMileageCloseout.endTime = finish
+        noMileageCloseout.endMilage = nil
+        check(!pageUI.routeNeedsCloseout(noMileageCloseout), "An optional closeout stays finished with no ending mileage")
         var partiallyReopened = reopened; partiallyReopened.endTime = finish
         check(partiallyReopened.needsReopening, "Stale in-progress status with an ending time still offers reopening")
         print("\(count) route reopening, start/resume/finish, legacy, confirmation, failure, and stale-response checks passed")
@@ -264,10 +301,10 @@ production = block(writer, 'struct ActiveRoute:')
 production += '\n' + block(writer, 'func startOrResumeActiveRoute(')
 vm_methods = '\n'.join(block(view_model, marker) for marker in [
     'func startActiveRoute(', 'private func activateRoute(', 'func resumeActiveRoute(',
-    'func finishRouteWithEndMileage(', 'func stopActiveRoute(', 'private func routeEndTime('])
+    'func prepareRouteMileage(', 'func saveRouteMileage('])
 ui_methods = '\n'.join(block(dashboard, marker) for marker in [
     'private func routeNeedsStartMileage(', 'private func routeNeedsCloseout(',
-    'private func presentRouteCloseoutIfNeeded(', 'private func prepareEndMileageInput('])
+    'private func presentRouteCloseoutIfNeeded('])
 # The model belongs before the controlled Writer class, then use the actual method bodies.
 model_source, writer_method = production.split('func startOrResumeActiveRoute(', 1)
 stubs = stubs.replace('@MainActor final class Writer {', model_source + '\n@MainActor final class Writer {')

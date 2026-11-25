@@ -606,14 +606,9 @@ final class AddNewJobFromRepairRequestViewModel: ObservableObject {
         }
     }
 
-    var plannedTaskLaborCents: Int {
-        jobTaskList.reduce(0) { total, task in
-            total + task.contractedRate
-        }
-    }
 
     var plannedTotalLaborCents: Int {
-        plannedStopLaborCents + plannedTaskLaborCents
+        plannedStopLaborCents
     }
 
     var plannedMaterialCostCents: Int {
@@ -1488,10 +1483,6 @@ extension AddNewJobFromRepairRequest {
                     cents: VM.plannedStopLaborCents
                 )
 
-                RepairRequestJobMoneyRow(
-                    title: "Planned Task Labor",
-                    cents: VM.plannedTaskLaborCents
-                )
 
                 RepairRequestJobMoneyRow(
                     title: "Planned Materials Cost",

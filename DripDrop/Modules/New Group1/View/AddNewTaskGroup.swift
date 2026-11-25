@@ -27,7 +27,6 @@
         @Published var itemName: String = ""
         @Published var itemType: JobTaskType = .basic
         @Published var itemDescription: String = ""
-        @Published var itemRate: String = "0"
         @Published var itemEstimatedTime: String = "0"
 
         @Published var isSubmitting: Bool = false
@@ -37,7 +36,6 @@
 
         var canAddItem: Bool {
             !itemName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            Double(itemRate) != nil &&
             Int(itemEstimatedTime) != nil
         }
 
@@ -53,13 +51,6 @@
             }
         }
 
-        func validateRate() {
-            guard !itemRate.isEmpty else { return }
-
-            if Double(itemRate) == nil {
-                itemRate = String(itemRate.dropLast())
-            }
-        }
 
         func validateEstimatedTime() {
             guard !itemEstimatedTime.isEmpty else { return }
@@ -72,7 +63,6 @@
         func clearNewItem() {
             addNewItem = false
             itemEstimatedTime = "0"
-            itemRate = "0"
             itemName = ""
             itemType = .basic
             itemDescription = ""
@@ -94,18 +84,12 @@
                 return
             }
 
-            guard let rate = Double(itemRate) else {
-                errorMessage = "Rate must be a valid number."
-                showError = true
-                return
-            }
 
             let item = JobTaskGroupItem(
                 id: UUID().uuidString,
                 name: trimmedName,
                 type: itemType,
                 description: trimmedDescription,
-                contractedRate: Int((rate * 100).rounded()),
                 estimatedTime: time
             )
 
@@ -252,9 +236,6 @@
                 if let currentCompany = masterDataManager.currentCompany {
                     VM.onLoad(companyId: currentCompany.id)
                 }
-            }
-            .onChange(of: VM.itemRate) { _ in
-                VM.validateRate()
             }
             .onChange(of: VM.itemEstimatedTime) { _ in
                 VM.validateEstimatedTime()
@@ -422,7 +403,6 @@
                         )
 
                         HStack(spacing: 12) {
-                            moneyInputRow
                             timeInputRow
                         }
 
@@ -680,26 +660,6 @@
             }
         }
 
-        var moneyInputRow: some View {
-            VStack(alignment: .leading, spacing: 8) {
-                Label("Rate", systemImage: "dollarsign.circle")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                HStack(spacing: 6) {
-                    Text("$")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    TextField("0", text: $VM.itemRate)
-                        .font(.subheadline)
-                        .keyboardType(.decimalPad)
-                }
-                .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-        }
-
         var timeInputRow: some View {
             VStack(alignment: .leading, spacing: 8) {
                 Label("Time", systemImage: "timer")
@@ -745,9 +705,6 @@
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.secondary)
 
-                        Text(Double(item.contractedRate) / 100, format: .currency(code: "USD"))
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
                     }
                 }
 

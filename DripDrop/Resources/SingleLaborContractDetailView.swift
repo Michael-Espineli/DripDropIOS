@@ -311,7 +311,6 @@ extension SingleLaborContractDetailView{
                             VStack{
                                 Text("\(datum.name)")
                                 Text("\(datum.type.rawValue)")
-                                Text("\(datum.contractedRate/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
                             }
                             Spacer()
                             if datum.jobIsCreated {

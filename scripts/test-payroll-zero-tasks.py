@@ -10,6 +10,7 @@ production = source[source.index('extension TechnicianPayLineItem {'):source.ind
 stubs = r'''
 import Foundation
 import Combine
+extension Error { var userFacingMessage: String { localizedDescription } }
 enum WorkerTypeEnum { case notAssigned }
 enum PayLineItemSource { case serviceStop, serviceStopTask, manualAdjustment }
 enum PayCalculationStatus { case pending, calculated, needsReview, adjusted, approved, paid, voided }
@@ -34,6 +35,10 @@ struct TechnicianPayLineItem {
     var voidedByUserId: String?
     var voidReason: PayLineItemVoidReason?
     var adminReviewNotes: String?
+    var payrollSource: String?
+    var serviceStopTaskId: String?
+    var jobTaskId: String?
+    var sourceTaskId: String?
 }
 enum PayrollDateFormatter { static func shortDate(_ date: Date) -> String { "today" } }
 @MainActor protocol ProductionDataServiceProtocol {
@@ -66,18 +71,22 @@ checks = r'''
         var paid = zero; paid.id = "paid"; paid.paidAt = Date()
         var adjusted = zero; adjusted.id = "adjusted"; adjusted.calculationStatus = .adjusted
         var stop = zero; stop.id = "stop"; stop.source = .serviceStop
+        var linked = positive; linked.source = .manualAdjustment; linked.jobTaskId = "job-task"
+        assert(linked.isLegacyTaskEarning && !linked.canApproveEarning && !linked.canMarkEarningPaid)
         assert(zero.canClearZeroDollarTask && review.canClearZeroDollarTask)
         assert(!positive.canClearZeroDollarTask && !attached.canClearZeroDollarTask && !exported.canClearZeroDollarTask)
         assert(!paid.canClearZeroDollarTask && !adjusted.canClearZeroDollarTask && !stop.canClearZeroDollarTask)
-        vm.lineItems = [zero, review, positive, attached, exported, adjusted]
+        vm.lineItems = [zero, review, positive, attached, exported, adjusted, stop]
         assert(vm.clearableZeroTasks.map(\.id) == ["zero", "review"])
         await vm.approveAllVisible()
         assert(service.cleared == [["zero"]])
-        assert(service.saved.map(\.id) == ["positive"])
+        assert(service.saved.map(\.id) == ["stop"])
         assert(vm.lineItems.first { $0.id == "zero" }?.calculationStatus == .voided)
         assert(vm.lineItems.first { $0.id == "review" }?.calculationStatus == .needsReview)
         assert(vm.filteredLineItems.map(\.id).contains("review") && !vm.filteredLineItems.map(\.id).contains("zero"))
         await vm.approve(review)
+        await vm.approve(positive)
+        await vm.markPaid(positive)
         await vm.markPaid(review)
         await vm.markPaid(zero)
         assert(service.saved.count == 1 && vm.showAlert)
@@ -97,7 +106,7 @@ checks = r'''
         await vm.clearZeroTasks(vm.clearableZeroTasks)
         assert(service.cleared.suffix(2).map(\.count) == [200, 1])
         assert(!vm.isSaving && vm.clearableZeroTasks.isEmpty)
-        print("Passed 17 production payroll zero-task queue checks")
+        print("Passed production payroll queue checks for visit and legacy task entries")
     }
 }
 '''

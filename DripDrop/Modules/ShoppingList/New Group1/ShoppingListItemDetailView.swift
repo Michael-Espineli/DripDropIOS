@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import FirebaseFunctions
 import FirebaseFirestore
 
 struct ShoppingListItemDetailView: View {
@@ -630,6 +631,7 @@ private extension View {
 
 // Reads live invoice links without coupling the shopping/purchase Codable models to billing.
 struct PartInvoiceStatusCard: View {
+    @EnvironmentObject private var masterDataManager: MasterDataManager
     let companyId: String
     let collection: String
     let recordId: String
@@ -639,6 +641,11 @@ struct PartInvoiceStatusCard: View {
     @State private var message = ""
     @State private var observedPath = ""
     @State private var listener: ListenerRegistration?
+    @State private var canRecordOffline = false
+    @State private var offlineAction = ""
+    @State private var offlineValue = ""
+    @State private var showingOfflinePrompt = false
+    @State private var savingOffline = false
     private var path: String { "companies/\(companyId)/\(collection)/\(recordId)" }
     private var invoiceURL: URL? {
         let base = AppEnvironment.current == .dev ? "https://the-pool-app-dev.web.app" : "https://dripdrop-poolapp.com"
@@ -646,11 +653,16 @@ struct PartInvoiceStatusCard: View {
     }
     var body: some View {
         Group {
-            if !invoiceId.isEmpty || !workflow.isEmpty || !message.isEmpty {
+            if !invoiceId.isEmpty || !workflow.isEmpty || !message.isEmpty || canRecordOffline {
                 VStack(alignment: .leading, spacing: 10) {
                     Label("Invoice", systemImage: "doc.text").font(.headline)
-                    Text(workflow == "awaitingNextBill" ? "Queued for the next recurring service bill." : workflow == "nextBillAttached" ? "Included on the recurring service invoice." : workflow == "awaitingDelivery" ? "Invoice will be created after delivery or installation." : "Status: \(status.isEmpty ? workflow : status)")
-                        .font(.subheadline)
+                    if !status.isEmpty || !workflow.isEmpty {
+                        Text(billingStatusText).font(.subheadline)
+                    }
+                    if canRecordOffline {
+                        Button("Invoiced externally") { openOfflinePrompt("externalInvoice") }.disabled(savingOffline)
+                        Button("Cash received") { openOfflinePrompt("cashReceived") }.disabled(savingOffline)
+                    }
                     if !message.isEmpty { Text(message).font(.caption).foregroundStyle(.orange) }
                     if !invoiceId.isEmpty, let invoiceURL {
                         Link("Open Invoice in Sales", destination: invoiceURL)
@@ -676,9 +688,64 @@ struct PartInvoiceStatusCard: View {
                     status = data["invoiceStatus"] as? String ?? ""
                     workflow = data["billingAutomationStatus"] as? String ?? ""
                     message = data["billingAutomationError"] as? String ?? ""
+                    canRecordOffline = collection == "shoppingList" && (invoiceId.isEmpty || status == "draft") &&
+                        masterDataManager.hasCompanyPermission("404") && data["invoiced"] as? Bool != true &&
+                        [data["jobId"], data["workOrderId"], data["assignedJobId"]].allSatisfy { ($0 as? String ?? "").isEmpty } &&
+                        (data["customerId"] as? String ?? "").isEmpty == false && data["materialUsageOnly"] as? Bool != true
                 }
             }
         }
+        .alert(offlineAction == "cashReceived" ? "Cash received" : "Invoiced externally", isPresented: $showingOfflinePrompt) {
+            TextField(offlineAction == "cashReceived" ? "Amount in dollars" : "Invoice reference", text: $offlineValue)
+            Button("Cancel", role: .cancel) {}
+            Button("Record") { Task { await recordOffline() } }
+        }
         .onDisappear { observedPath = ""; listener?.remove(); listener = nil }
     }
+    private var billingStatusText: String {
+        switch workflow {
+        case "awaitingNextBill": return "Queued for the next recurring service bill."
+        case "nextBillAttached": return "Included on the recurring service invoice."
+        case "awaitingDelivery": return "Invoice will be created after delivery or installation."
+        case "awaitingExternalBilling": return "Awaiting external billing."
+        case "cashReceived": return "Cash received"
+        case "externalInvoice": return "Invoiced externally"
+        case "includedOnJobInvoice": return "Included on job invoice"
+        default: return status.isEmpty ? workflow : status
+        }
+    }
+
+    private func openOfflinePrompt(_ action: String) {
+        offlineAction = action
+        offlineValue = ""
+        showingOfflinePrompt = true
+    }
+
+    private func recordOffline() async {
+        guard !savingOffline else { return }
+        savingOffline = true
+        defer { savingOffline = false }
+        let value = offlineValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        var data: [String: Any] = ["companyId": companyId, "shoppingItemId": recordId, "action": offlineAction]
+        if offlineAction == "cashReceived" {
+            guard let decimal = Decimal(string: value, locale: .current) else {
+                message = "Enter the cash amount received."
+                return
+            }
+            let cents = NSDecimalNumber(decimal: decimal * 100).doubleValue
+            guard cents.isFinite, cents > 0, cents <= 999999999999, cents.rounded() == cents else {
+                message = "Enter a positive amount in dollars and cents."
+                return
+            }
+            data["amountCents"] = Int(cents)
+        } else {
+            data["reference"] = value
+        }
+        do {
+            _ = try await Functions.functions().httpsCallable("recordPartOfflineBilling").call(data)
+        } catch {
+            message = error.userFacingMessage
+        }
+    }
+
 }

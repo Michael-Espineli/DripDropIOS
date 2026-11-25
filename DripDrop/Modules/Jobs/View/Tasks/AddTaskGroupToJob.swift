@@ -35,7 +35,6 @@ final class AddTaskGroupToJobViewModel:ObservableObject{
                     name: "Spray Down Grids",
                     type: .cleanFilter,
                     description: "",
-                    contractedRate: 2500,
                     estimatedTime: 1000
                 ),
                 JobTaskGroupItem(
@@ -43,7 +42,6 @@ final class AddTaskGroupToJobViewModel:ObservableObject{
                     name: "Replace Filter Medium",
                     type: .cleanFilter,
                     description: "",
-                    contractedRate: 1500,
                     estimatedTime: 1200
                 ),
                 JobTaskGroupItem(
@@ -51,7 +49,6 @@ final class AddTaskGroupToJobViewModel:ObservableObject{
                     name: "Check For broken Parts",
                     type: .cleanFilter,
                     description: "",
-                    contractedRate: 2000,
                     estimatedTime: 1100
                 )
             ]
@@ -65,7 +62,7 @@ final class AddTaskGroupToJobViewModel:ObservableObject{
             let jobTask = JobTask(
                 name: task.name,
                 type: task.type,
-                contractedRate: task.contractedRate,
+                contractedRate: 0,
                 estimatedTime: task.estimatedTime,
                 status: .draft,
                 customerApproval: true,
@@ -259,8 +256,6 @@ extension AddTaskGroupToJob {
                                     .lineLimit(2,reservesSpace: true)
                                     .font(.footnote)
                                 HStack{
-                                    Text("\(Double(task.contractedRate)/100, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                                        .font(.footnote)
                                     Spacer()
                                     Text(displaySecondsAsTime(seconds: task.estimatedTime))
                                         .font(.footnote)
